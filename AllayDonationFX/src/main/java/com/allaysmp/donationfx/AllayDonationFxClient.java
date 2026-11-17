@@ -155,30 +155,12 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             g.text(mc.font, "BLACK HOLE  " + amountLabel, width / 2 - 65, height / 2 + radius + 14, 0xFFDCCBFF, true);
             g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + radius + 27, donorColor, true);
         } else if (effect == Effect.DRAGON) {
-            // A red dragon sweeps across the HUD, then drops a rainbow-rimmed payment card.
+            // Keep the donation details in the compact side popup.
+            // The dragon flyby is the tier animation layered over that popup.
             float progress = Math.min(1f, elapsed / 4_800f);
             int dragonX = (int) (-190 + progress * (width + 380));
             int dragonY = (int) (height * 0.24f + Math.sin(elapsed / 150.0) * 13);
             drawRedDragon(g, dragonX, dragonY, elapsed);
-            if (elapsed > 900L) {
-                float drop = Math.min(1f, (elapsed - 900L) / 650f);
-                int cardY = (int) (-76 + drop * (height * 0.64f + 76));
-                float pulse = (float) (0.5 + 0.5 * Math.sin(elapsed / 190.0));
-                int cardWidth = Math.min(360, width - 32);
-                int cardHeight = 88;
-                drawRainbowRim(g, width / 2, cardY + cardHeight / 2, cardWidth, cardHeight, elapsed);
-                roundedFill(g, width / 2 - cardWidth / 2 + 5, cardY + 5,
-                        width / 2 + cardWidth / 2 - 5, cardY + cardHeight - 5, 12, 0xF20B101B);
-                String title = "DRAGON DROP!";
-                g.text(mc.font, title, width / 2 - mc.font.width(title) / 2, cardY + 14, 0xFFFF6A55, true);
-                g.text(mc.font, amountLabel, width / 2 - mc.font.width(amountLabel) / 2,
-                        cardY + 34, 0xFFFFFFFF, true);
-                g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2,
-                        cardY + 55, 0xFFFFC5B8, true);
-                int shineX = width / 2 - cardWidth / 2 + (int) ((elapsed * 0.55f) % cardWidth);
-                g.fill(shineX, cardY + 7, shineX + 2, cardY + cardHeight - 7,
-                        withAlpha(0xFFFFFFFF, (int) (30 + pulse * 35)));
-            }
         } else if (effect == Effect.CINEMATIC) {
             // A dramatic, layered 3D-style HUD cinematic: expanding perspective frames,
             // an extruded amount title, sweeping light streaks and cinematic letterboxing.
