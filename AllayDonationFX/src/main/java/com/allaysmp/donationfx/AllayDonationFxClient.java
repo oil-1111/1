@@ -122,7 +122,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         else active = Effect.NONE;
 
         if (showDonationPopup || active != Effect.NONE || has67) {
-            amountLabel = "$" + matcher.group(2) + suffix;
+            amountLabel = formatDonationAmount(amount);
             fakePayment = false;
             fakeColour = "";
             startedAt = System.currentTimeMillis();
