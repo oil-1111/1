@@ -255,8 +255,10 @@ public final class AllayDonationFxClient implements ClientModInitializer {
 
     private static void drawDonationPopup(GuiGraphicsExtractor g, Minecraft mc, int width, int height,
                                            long elapsed, Effect effect, int donorColor) {
-        int panelWidth = Math.min(194, width - 20);
-        int panelHeight = 52;
+        // One compact side card is used for every donation tier.
+        // Tier-specific animations are rendered separately on top of this notification.
+        int panelWidth = Math.min(166, width - 16);
+        int panelHeight = 44;
         float slide = Math.min(1f, elapsed / 420f);
         int left = (int) (-panelWidth - 8 + slide * (panelWidth + 20));
         int top = height / 3;
