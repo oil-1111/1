@@ -198,39 +198,38 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             g.text(mc.font, fakeLabel, width / 2 - mc.font.width(fakeLabel) / 2, (int) (height * 0.78f), 0xFFFF7777, true);
         }
 
-        // 67 Easter egg: always drawn last so it stacks over the normal donation effect,
-        // including the 10M cinematic. The amount test is performed on the payment digits.
+        // 67 Easter egg: small, calm badge tucked into the bottom-right corner.
         if (meme) {
-            float bounce = (float) Math.abs(Math.sin(elapsed / 115.0)) * 16f;
-            float pulse = (float) (0.5 + 0.5 * Math.sin(elapsed / 95.0));
+            float pulse = (float) (0.5 + 0.5 * Math.sin(elapsed / 420.0));
             boolean solo67 = effect == Effect.NONE;
-            int y = solo67 ? (int) (height / 2f - 23 - bounce) : (int) (height * 0.18f - bounce);
-            int x = width / 2;
-            int glow = fakePayment ? withAlpha(donorColor, (int) (75 + pulse * 100))
-                    : (solo67 ? (0x550000FF | ((int) (55 + pulse * 90) << 24))
-                              : (0x5500FF00 | ((int) (55 + pulse * 90) << 24)));
-            int size = solo67 ? 88 + (int) (pulse * 8) : 76 + (int) (pulse * 8);
-            // A solo $67 gets a blue popup; stacked 67s use the signature green glow.
-            g.fill(x - size - 9, y - 31, x + size + 9, y + 43, glow);
-            g.fill(x - size, y - 25, x + size, y + 37, solo67 ? 0xDD07152B : 0xDD071B0A);
-            g.fill(x - size + 3, y - 22, x + size - 3, y + 34, solo67 ? 0xAA123B70 : 0xAA123B12);
-            g.pose().pushMatrix();
-            g.pose().translate(x, y + 1f);
-            g.pose().scale(2.1f, 2.1f);
-            g.pose().translate(-x, -(y + 1f));
-            g.text(mc.font, "67", x - 17, y - 8, 0xFFFFFFFF, true);
-            g.text(mc.font, "67", x - 16, y - 9, fakePayment ? donorColor : (solo67 ? 0xFF55B8FF : 0xFF8CFF36), true);
-            g.pose().popMatrix();
+            int x = width - 76;
+            int y = height - (solo67 ? 72 : 48);
+            int glow = fakePayment ? withAlpha(donorColor, (int) (38 + pulse * 24))
+                    : (solo67 ? 0x553B9DFF : 0x554DCE65);
+            int panel = solo67 ? 0xE5102948 : 0xE5122B17;
+            int edge = solo67 ? 0xFF65B9FF : 0xFF91E76A;
+            roundedFill(g, x - 37, y - 22, x + 37, y + 22, 10, glow);
+            roundedFill(g, x - 34, y - 19, x + 34, y + 19, 8, panel);
+            roundedFill(g, x - 30, y - 16, x + 30, y + 16, 6, withAlpha(edge, 45));
+            String small67 = "67";
+            g.text(mc.font, small67, x - mc.font.width(small67) / 2, y - 8,
+                    fakePayment ? donorColor : edge, true);
             if (solo67) {
-                g.text(mc.font, amountLabel, x - mc.font.width(amountLabel) / 2, y + 15, 0xFFFFFFFF, true);
-                g.text(mc.font, donorName, x - mc.font.width(donorName) / 2, y + 28, 0xFF9CD9FF, true);
+                g.text(mc.font, amountLabel, x - mc.font.width(amountLabel) / 2, y + 5, 0xFFFFFFFF, true);
             }
-            // Small pixel-like sparks around the popup.
-            int spark = fakePayment ? donorColor : (solo67 ? 0xFF80CFFF : 0xFF9DFF55);
-            g.fill(x - size - 13, y - 12, x - size - 7, y - 6, spark);
-            g.fill(x + size + 7, y + 8, x + size + 13, y + 14, spark);
-            g.fill(x - 42, y + 40, x - 36, y + 46, spark);
-            g.fill(x + 36, y - 34, x + 42, y - 28, spark);
+        }
+    }
+
+    private static void roundedFill(GuiGraphicsExtractor g, int left, int top, int right, int bottom, int radius, int color) {
+        int r = Math.max(1, Math.min(radius, Math.min((right - left) / 2, (bottom - top) / 2)));
+        for (int y = top; y < bottom; y++) {
+            int dy = y < top + r ? top + r - y : (y >= bottom - r ? y - (bottom - r - 1) : 0);
+            int inset = 0;
+            if (dy > 0) {
+                double inside = (double) r * r - (double) (r - dy) * (r - dy);
+                inset = r - (int) Math.sqrt(Math.max(0, inside));
+            }
+            g.fill(left + inset, y, right - inset, y + 1, color);
         }
     }
 
@@ -310,10 +309,22 @@ public final class AllayDonationFxClient implements ClientModInitializer {
     private static void playDonationSound(Effect effect) {
         Minecraft mc = Minecraft.getInstance();
         switch (effect) {
-            case SIDE_POPUP -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_IN, 0.9F));
-            case EXPLOSION -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EXPLODE, 0.85F));
-            case BLACK_HOLE -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.END_PORTAL_SPAWN, 1.0F));
-            case CINEMATIC -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0F));
+            case SIDE_POPUP -> {
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_IN, 1.0F));
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ANVIL_LAND, 0.65F));
+            }
+            case EXPLOSION -> {
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EXPLODE, 1.0F));
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.DRAGON_FIREBALL_EXPLODE, 0.9F));
+            }
+            case BLACK_HOLE -> {
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.END_PORTAL_SPAWN, 1.0F));
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ENDER_DRAGON_GROWL, 0.85F));
+            }
+            case CINEMATIC -> {
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ENDER_DRAGON_DEATH, 0.9F));
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0F));
+            }
             default -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.8F));
         }
     }
