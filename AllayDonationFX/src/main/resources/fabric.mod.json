@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "allaydonationfx",
+  "version": "${version}",
+  "name": "Allay Donation FX",
+  "description": "Client-side donation effects for AllaySMP chat payment notifications.",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.allaysmp.donationfx.AllayDonationFxClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
