@@ -110,7 +110,9 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         if (effect == Effect.NONE && !meme) return;
 
         long elapsed = System.currentTimeMillis() - startedAt;
-        long effectDuration = effect == Effect.NONE ? 2_500L : (effect == Effect.CINEMATIC ? 5_500L : 4_000L);
+        long effectDuration = effect == Effect.NONE ? 2_500L
+                : (effect == Effect.SIDE_POPUP ? 6_000L
+                : (effect == Effect.CINEMATIC ? 5_500L : 4_000L));
         if (elapsed > effectDuration) {
             active = Effect.NONE;
             has67 = false;
