@@ -780,7 +780,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         }
 
         donorName = "FakeDonor";
-        amountLabel = "$" + matcher.group(1) + suffix;
+        amountLabel = formatDonationAmount(amount);
         fakePayment = true;
         fakeColour = colour;
         has67 = matcher.group(1).replaceAll("[^0-9]", "").contains("67");
@@ -791,6 +791,19 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         playDonationSound(active);
         source.sendFeedback(Component.literal("Playing local fake donation preview: " + amountLabel + " (" + colour + "). No payment is sent."));
         return 1;
+    }
+
+
+    private static String formatDonationAmount(double amount) {
+        if (amount >= 1_000_000_000d) return "$" + compactNumber(amount / 1_000_000_000d) + "B";
+        if (amount >= 1_000_000d) return "$" + compactNumber(amount / 1_000_000d) + "M";
+        if (amount >= 1_000d) return "$" + compactNumber(amount / 1_000d) + "K";
+        return "$" + compactNumber(amount);
+    }
+
+    private static String compactNumber(double value) {
+        if (Math.abs(value - Math.rint(value)) < 0.000001d) return String.valueOf((long)Math.rint(value));
+        return String.format(Locale.ROOT, "%.1f", value).replaceAll("\\.0$", "");
     }
 
     private static void setEffect(double amount) {
