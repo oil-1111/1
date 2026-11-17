@@ -89,7 +89,8 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         // Keep punctuation out of the Easter-egg test: $6.7M becomes "67".
         String digitsOnly = matcher.group(2).replaceAll("[^0-9]", "");
         has67 = digitsOnly.contains("67");
-        if (amount >= 10_000_000d) active = Effect.CINEMATIC;
+        if (amount >= 100_000_000d) active = Effect.DRAGON;
+        else if (amount >= 10_000_000d) active = Effect.CINEMATIC;
         else if (amount >= 1_000_000d) active = Effect.BLACK_HOLE;
         else if (amount >= 100_000d) active = Effect.EXPLOSION;
         else if (amount >= 10_000d) active = Effect.SIDE_POPUP;
@@ -111,8 +112,9 @@ public final class AllayDonationFxClient implements ClientModInitializer {
 
         long elapsed = System.currentTimeMillis() - startedAt;
         long effectDuration = effect == Effect.NONE ? 2_500L
+                : (effect == Effect.DRAGON ? 8_000L
                 : (effect == Effect.SIDE_POPUP ? 6_000L
-                : (effect == Effect.CINEMATIC ? 5_500L : 4_000L));
+                : (effect == Effect.CINEMATIC ? 5_500L : 4_000L)));
         if (elapsed > effectDuration) {
             active = Effect.NONE;
             has67 = false;
@@ -153,6 +155,31 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             g.fill(width / 2 - radius - 5, height / 2 - 2, width / 2 + radius + 5, height / 2 + 2, fakePayment ? withAlpha(donorColor, 0xBB) : 0xBB9D65FF);
             g.text(mc.font, "BLACK HOLE  " + amountLabel, width / 2 - 65, height / 2 + radius + 14, 0xFFDCCBFF, true);
             g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + radius + 27, donorColor, true);
+        } else if (effect == Effect.DRAGON) {
+            // A red dragon sweeps across the HUD, then drops a rainbow-rimmed payment card.
+            float progress = Math.min(1f, elapsed / 4_800f);
+            int dragonX = (int) (-190 + progress * (width + 380));
+            int dragonY = (int) (height * 0.24f + Math.sin(elapsed / 150.0) * 13);
+            drawRedDragon(g, dragonX, dragonY, elapsed);
+            if (elapsed > 900L) {
+                float drop = Math.min(1f, (elapsed - 900L) / 650f);
+                int cardY = (int) (-76 + drop * (height * 0.64f + 76));
+                float pulse = (float) (0.5 + 0.5 * Math.sin(elapsed / 190.0));
+                int cardWidth = Math.min(360, width - 32);
+                int cardHeight = 88;
+                drawRainbowRim(g, width / 2, cardY + cardHeight / 2, cardWidth, cardHeight, elapsed);
+                roundedFill(g, width / 2 - cardWidth / 2 + 5, cardY + 5,
+                        width / 2 + cardWidth / 2 - 5, cardY + cardHeight - 5, 12, 0xF20B101B);
+                String title = "DRAGON DROP!";
+                g.text(mc.font, title, width / 2 - mc.font.width(title) / 2, cardY + 14, 0xFFFF6A55, true);
+                g.text(mc.font, amountLabel, width / 2 - mc.font.width(amountLabel) / 2,
+                        cardY + 34, 0xFFFFFFFF, true);
+                g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2,
+                        cardY + 55, 0xFFFFC5B8, true);
+                int shineX = width / 2 - cardWidth / 2 + (int) ((elapsed * 0.55f) % cardWidth);
+                g.fill(shineX, cardY + 7, shineX + 2, cardY + cardHeight - 7,
+                        withAlpha(0xFFFFFFFF, (int) (30 + pulse * 35)));
+            }
         } else if (effect == Effect.CINEMATIC) {
             // A dramatic, layered 3D-style HUD cinematic: expanding perspective frames,
             // an extruded amount title, sweeping light streaks and cinematic letterboxing.
@@ -227,6 +254,63 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         }
     }
 
+    private static void drawRedDragon(GuiGraphicsExtractor g, int x, int y, long elapsed) {
+        int flap = (int) (Math.sin(elapsed / 115.0) * 13);
+        int red = 0xFFE52D35;
+        int darkRed = 0xFF9E1728;
+        int shadow = 0xAA310C18;
+        // Tail and long body.
+        g.fill(x - 78, y + 8, x - 35, y + 16, darkRed);
+        g.fill(x - 100, y + 1, x - 76, y + 10, red);
+        g.fill(x - 115, y - 7, x - 98, y + 4, darkRed);
+        g.fill(x - 44, y - 2, x + 28, y + 19, red);
+        g.fill(x - 30, y + 14, x + 20, y + 20, shadow);
+        // Neck, head, snout, horns and bright eye.
+        g.fill(x + 18, y - 11, x + 47, y + 10, red);
+        g.fill(x + 40, y - 6, x + 68, y + 5, red);
+        g.fill(x + 48, y - 15, x + 57, y - 6, 0xFFFF6B45);
+        g.fill(x + 28, y - 19, x + 34, y - 8, darkRed);
+        g.fill(x + 44, y - 19, x + 50, y - 9, darkRed);
+        g.fill(x + 53, y - 2, x + 58, y + 1, 0xFFFFFF55);
+        // Wings flap as the dragon flies past.
+        g.fill(x - 28, y - 3 - flap, x + 4, y - 10 - flap, darkRed);
+        g.fill(x - 24, y - 10 - flap, x - 14, y - 34 - flap, red);
+        g.fill(x - 14, y - 10 - flap, x + 5, y - 27 - flap, red);
+        g.fill(x - 8, y - 5 - flap, x + 18, y - 19 - flap, darkRed);
+        g.fill(x - 18, y + 12 + flap, x + 3, y + 20 + flap, darkRed);
+        // Legs and claws.
+        g.fill(x - 26, y + 14, x - 17, y + 29, red);
+        g.fill(x + 5, y + 13, x + 14, y + 27, red);
+        g.fill(x - 30, y + 26, x - 14, y + 30, 0xFFFFB4A0);
+        g.fill(x + 2, y + 24, x + 18, y + 28, 0xFFFFB4A0);
+        // Short flame trail.
+        g.fill(x - 140, y + 2, x - 118, y + 9, 0xCCFF6A32);
+        g.fill(x - 155, y - 2, x - 137, y + 5, 0x99FFD34D);
+    }
+
+    private static void drawRainbowRim(GuiGraphicsExtractor g, int centerX, int centerY, int width, int height, long elapsed) {
+        int left = centerX - width / 2;
+        int top = centerY - height / 2;
+        int right = centerX + width / 2;
+        int bottom = centerY + height / 2;
+        int[] rainbow = {0xFFFF4545, 0xFFFFA52F, 0xFFFFFF45, 0xFF4DFF83, 0xFF43C9FF, 0xFF8A62FF, 0xFFFF5BD6};
+        int shift = (int) (elapsed / 95L);
+        int thickness = 5;
+        for (int i = 0; i < rainbow.length; i++) {
+            int color = rainbow[(i + shift) % rainbow.length];
+            int segmentLeft = left + (width * i / rainbow.length);
+            int segmentRight = left + (width * (i + 1) / rainbow.length);
+            g.fill(segmentLeft, top, segmentRight, top + thickness, color);
+            g.fill(segmentLeft, bottom - thickness, segmentRight, bottom, color);
+            int segmentTop = top + (height * i / rainbow.length);
+            int segmentBottom = top + (height * (i + 1) / rainbow.length);
+            g.fill(left, segmentTop, left + thickness, segmentBottom, color);
+            g.fill(right - thickness, segmentTop, right, segmentBottom, color);
+        }
+        roundedFill(g, left + thickness, top + thickness, right - thickness, bottom - thickness,
+                10, 0xF20B101B);
+    }
+
     private static void drawTierRim(GuiGraphicsExtractor g, int centerX, int centerY, int width, int height, int tier, int accent) {
         int halfW = width / 2;
         int halfH = height / 2;
@@ -285,6 +369,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             case EXPLOSION -> 0xFFFFA34D;
             case BLACK_HOLE -> 0xFFBE8CFF;
             case CINEMATIC -> 0xFFFFD76A;
+            case DRAGON -> new int[] {0xFFFF5555, 0xFFFFAA33, 0xFFFFFF55, 0xFF55FF77, 0xFF55AAFF, 0xFFCC66FF}[(int) ((elapsed / 130L) % 6)];
             default -> 0xFFFFFFFF;
         };
     }
@@ -330,7 +415,8 @@ public final class AllayDonationFxClient implements ClientModInitializer {
     }
 
     private static void setEffect(double amount) {
-        if (amount >= 10_000_000d) active = Effect.CINEMATIC;
+        if (amount >= 100_000_000d) active = Effect.DRAGON;
+        else if (amount >= 10_000_000d) active = Effect.CINEMATIC;
         else if (amount >= 1_000_000d) active = Effect.BLACK_HOLE;
         else if (amount >= 100_000d) active = Effect.EXPLOSION;
         else if (amount >= 10_000d) active = Effect.SIDE_POPUP;
@@ -356,9 +442,14 @@ public final class AllayDonationFxClient implements ClientModInitializer {
                 mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ENDER_DRAGON_DEATH, 0.9F));
                 mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0F));
             }
+            case DRAGON -> {
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ENDER_DRAGON_GROWL, 1.0F));
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ENDER_DRAGON_FLAP, 1.0F));
+                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ENDER_DRAGON_DEATH, 0.8F));
+            }
             default -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.8F));
         }
     }
 
-    private enum Effect { NONE, SIDE_POPUP, EXPLOSION, BLACK_HOLE, CINEMATIC }
+    private enum Effect { NONE, SIDE_POPUP, EXPLOSION, BLACK_HOLE, CINEMATIC, DRAGON }
 }
