@@ -43,6 +43,8 @@ public final class AllayDonationFxClient implements ClientModInitializer {
     private static volatile String fakeColour = "";
     private static final List<DonationPopup> donationPopups = new ArrayList<>();
     private static final int MAX_VISIBLE_POPUPS = 5;
+    private static String lastPaymentMessage = "";
+    private static long lastPaymentMessageAt = 0L;
 
     private static final class DonationPopup {
         final String donor;
@@ -89,11 +91,17 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         );
     }
 
-    private static void detect(Component message) {
+    private static synchronized void detect(Component message) {
         String raw = message.getString();
+        long receivedAt = System.currentTimeMillis();
+        // The same server payment can arrive through both GAME and CHAT callbacks.
+        // Ignore an identical copy delivered immediately by the second callback.
+        if (raw.equals(lastPaymentMessage) && receivedAt - lastPaymentMessageAt < 1_200L) return;
         Matcher matcher = PAYMENT.matcher(raw);
         if (!matcher.find()) return;
 
+        lastPaymentMessage = raw;
+        lastPaymentMessageAt = receivedAt;
         donorName = matcher.group(1).trim().replaceAll("\\s+", " ");
         String numeric = matcher.group(2).replace(",", "");
         String suffix = matcher.group(3).toUpperCase(Locale.ROOT);
@@ -140,7 +148,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         long effectDuration = effect == Effect.NONE ? 6_000L
                 : (effect == Effect.DRAGON ? 8_000L
                 : (effect == Effect.SIDE_POPUP ? 6_000L
-                : (effect == Effect.CINEMATIC ? 5_500L : 4_000L)));
+                : (effect == Effect.CINEMATIC ? 9_000L : 4_000L)));
         synchronized (donationPopups) {
             donationPopups.removeIf(popup -> System.currentTimeMillis() - popup.createdAt > 6_000L);
         }
@@ -298,10 +306,11 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         String digits = amountLabel.replaceAll("[^0-9]", "");
         if (digits.isEmpty()) digits = "10";
         if (digits.length() > 6) digits = digits.substring(0, 6);
+        String reelValues = "$" + digits;
         String suffix = amountLabel.replaceAll("[0-9.,$]", "");
         int reelWidth = 38;
         int reelGap = 8;
-        int machineWidth = Math.min(width - 20, Math.max(250, digits.length() * (reelWidth + reelGap) + 88));
+        int machineWidth = Math.min(width - 20, Math.max(250, reelValues.length() * (reelWidth + reelGap) + 88));
         int machineHeight = 158;
         int left = (width - machineWidth) / 2;
         int top = Math.max(22, (height - machineHeight) / 2 - 8);
@@ -319,26 +328,27 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         g.text(mc.font, marquee, width / 2 - mc.font.width(marquee) / 2, top + 19, 0xFFFFD66B, true);
         g.fill(left + 16, top + 39, right - 16, top + 41, 0xFFFFC45B);
 
-        int reelsWidth = digits.length() * reelWidth + (digits.length() - 1) * reelGap;
+        int reelsWidth = reelValues.length() * reelWidth + (reelValues.length() - 1) * reelGap;
         int reelsLeft = width / 2 - reelsWidth / 2;
         int reelTop = top + 49;
         int reelBottom = reelTop + 57;
         String symbols = "0123456789*$+?";
-        for (int i = 0; i < digits.length(); i++) {
+        long finalStopAt = 2_400L + (reelValues.length() - 1) * 850L;
+        for (int i = 0; i < reelValues.length(); i++) {
             int x = reelsLeft + i * (reelWidth + reelGap);
             roundedFill(g, x - 2, reelTop - 2, x + reelWidth + 2, reelBottom + 2, 6, 0xFFFFD46B);
             roundedFill(g, x, reelTop, x + reelWidth, reelBottom, 4, 0xFF08090F);
             roundedFill(g, x + 3, reelTop + 3, x + reelWidth - 3, reelBottom - 3, 3, 0xFF20212A);
 
-            long stopAt = 1450L + i * 520L;
+            long stopAt = 2_400L + i * 850L;
             boolean spinning = elapsed < stopAt;
             String shown;
             if (spinning) {
-                long frame = Math.max(0L, (elapsed - i * 55L) / 65L);
+                long frame = Math.max(0L, (elapsed - i * 85L) / 100L);
                 int index = (int)Math.floorMod(frame * 17L + i * 31L + frame * frame * 3L, symbols.length());
                 shown = String.valueOf(symbols.charAt(index));
             } else {
-                shown = String.valueOf(digits.charAt(i));
+                shown = String.valueOf(reelValues.charAt(i));
             }
             int textColor = spinning ? 0xFFFFD36A : 0xFFFFFFFF;
             g.text(mc.font, shown, x + reelWidth / 2 - mc.font.width(shown) / 2, reelTop + 20, textColor, true);
@@ -367,9 +377,9 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         drawEllipse(g, pivotX, pivotY, 5, 5, 0xFFFFD56A);
 
         String suffixText = suffix.isBlank() ? "" : " " + suffix;
-        String result = "$ " + String.join(" ", digits.split("")) + suffixText;
-        String status = elapsed < 2800L ? "ROLLING YOUR DONATION..." : "JACKPOT!";
-        int statusColor = elapsed < 2800L ? 0xFFFFD36A : 0xFF8CFFB2;
+        String result = String.join(" ", reelValues.split("")) + suffixText;
+        String status = elapsed < finalStopAt + 350L ? "ROLLING YOUR DONATION..." : "JACKPOT!";
+        int statusColor = elapsed < finalStopAt + 350L ? 0xFFFFD36A : 0xFF8CFFB2;
         g.text(mc.font, status, width / 2 - mc.font.width(status) / 2, bottom + 8, statusColor, true);
         g.text(mc.font, result, width / 2 - mc.font.width(result) / 2, bottom + 22, 0xFFFFFFFF, true);
         g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, bottom + 36, 0xFFFFDCA0, true);
