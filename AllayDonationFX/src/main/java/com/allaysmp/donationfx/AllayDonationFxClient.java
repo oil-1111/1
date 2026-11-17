@@ -147,13 +147,50 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             g.text(mc.font, "BLACK HOLE  " + amountLabel, width / 2 - 65, height / 2 + radius + 14, 0xFFDCCBFF, true);
             g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + radius + 27, donorColor, true);
         } else if (effect == Effect.CINEMATIC) {
-            int bar = (int) (height * 0.13f * Math.min(1f, elapsed / 900f));
+            // A dramatic, layered 3D-style HUD cinematic: expanding perspective frames,
+            // an extruded amount title, sweeping light streaks and cinematic letterboxing.
+            float intro = Math.min(1f, elapsed / 850f);
+            float pulse = (float) (0.5 + 0.5 * Math.sin(elapsed / 170.0));
+            int bar = (int) (height * 0.15f * intro);
+            int accent = fakePayment ? donorColor : 0xFFFFD76A;
             g.fill(0, 0, width, bar, 0xFF050509);
             g.fill(0, height - bar, width, height, 0xFF050509);
             g.fill(0, 0, width, height, 0x22000000);
-            g.text(mc.font, "TEN MILLION!", width / 2 - 45, height / 2 - 18, fakePayment ? donorColor : 0xFFFFD76A, true);
-            g.text(mc.font, amountLabel, width / 2 - mc.font.width(amountLabel) / 2, height / 2 + 2, 0xFFFFFFFF, true);
-            g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + 18, donorColor, true);
+
+            // Nested frames expand toward the viewer to create a tunnel/depth effect.
+            for (int i = 0; i < 5; i++) {
+                int inset = 18 + i * 17 + (int) (pulse * 5);
+                int frameColor = withAlpha(accent, 95 - i * 13);
+                int thickness = 2;
+                g.fill(inset, height / 2 - 48 - i * 10, width - inset, height / 2 - 48 - i * 10 + thickness, frameColor);
+                g.fill(inset, height / 2 + 48 + i * 10, width - inset, height / 2 + 48 + i * 10 + thickness, frameColor);
+                g.fill(inset, height / 2 - 48 - i * 10, inset + thickness, height / 2 + 48 + i * 10, frameColor);
+                g.fill(width - inset - thickness, height / 2 - 48 - i * 10, width - inset, height / 2 + 48 + i * 10, frameColor);
+            }
+            // Light streaks sweep in from the edges.
+            int sweep = (int) ((elapsed * 1.4f) % Math.max(1, width));
+            g.fill(sweep - 90, height / 2 - 2, sweep + 90, height / 2 + 2, withAlpha(accent, 110));
+            g.fill(width - sweep - 90, height / 2 + 34, width - sweep + 90, height / 2 + 37, withAlpha(accent, 75));
+
+            String headline = "DONATION RECEIVED";
+            g.text(mc.font, headline, width / 2 - mc.font.width(headline) / 2, height / 2 - 58, 0xFFFFFFFF, true);
+
+            // Offset copies create an extruded, 3D-style amount title.
+            float titleScale = 1.8f + pulse * 0.12f;
+            g.pose().pushMatrix();
+            g.pose().translate(width / 2f, height / 2f - 15f);
+            g.pose().scale(titleScale, titleScale);
+            g.pose().translate(-width / 2f, -(height / 2f - 15f));
+            int amountX = width / 2 - mc.font.width(amountLabel) / 2;
+            for (int depth = 7; depth >= 1; depth--) {
+                g.text(mc.font, amountLabel, amountX + depth, height / 2 - 15 + depth, 0xFF6B3D12, false);
+            }
+            g.text(mc.font, amountLabel, amountX, height / 2 - 15, accent, true);
+            g.pose().popMatrix();
+
+            g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + 35, donorColor, true);
+            String subline = "ALLAYSMP • LEGENDARY PAYMENT";
+            g.text(mc.font, subline, width / 2 - mc.font.width(subline) / 2, height / 2 + 49, 0xFFD8D8E8, true);
         }
 
         if (fakePayment) {
@@ -177,8 +214,13 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             g.fill(x - size - 9, y - 31, x + size + 9, y + 43, glow);
             g.fill(x - size, y - 25, x + size, y + 37, solo67 ? 0xDD07152B : 0xDD071B0A);
             g.fill(x - size + 3, y - 22, x + size - 3, y + 34, solo67 ? 0xAA123B70 : 0xAA123B12);
+            g.pose().pushMatrix();
+            g.pose().translate(x, y + 1f);
+            g.pose().scale(2.1f, 2.1f);
+            g.pose().translate(-x, -(y + 1f));
             g.text(mc.font, "67", x - 17, y - 8, 0xFFFFFFFF, true);
             g.text(mc.font, "67", x - 16, y - 9, fakePayment ? donorColor : (solo67 ? 0xFF55B8FF : 0xFF8CFF36), true);
+            g.pose().popMatrix();
             if (solo67) {
                 g.text(mc.font, amountLabel, x - mc.font.width(amountLabel) / 2, y + 15, 0xFFFFFFFF, true);
                 g.text(mc.font, donorName, x - mc.font.width(donorName) / 2, y + 28, 0xFF9CD9FF, true);
