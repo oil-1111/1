@@ -331,7 +331,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         if (elapsed < finalStopAt && (lastSlotRollSoundElapsed < 0L || elapsed - lastSlotRollSoundElapsed >= 145L)) {
             float spinProgress = Math.min(1.0F, elapsed / (float) finalStopAt);
             float pitch = 0.65F + spinProgress * 0.55F;
-            mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.32F, pitch));
+            mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 0.32F, pitch));
             lastSlotRollSoundElapsed = elapsed;
         }
 
@@ -350,7 +350,6 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         int reelTop = top + 49;
         int reelBottom = reelTop + 57;
         String symbols = "0123456789*$+?";
-        long finalStopAt = 2_400L + (reelValues.length() - 1) * 850L;
         for (int i = 0; i < reelValues.length(); i++) {
             int x = reelsLeft + i * (reelWidth + reelGap);
             roundedFill(g, x - 2, reelTop - 2, x + reelWidth + 2, reelBottom + 2, 6, 0xFFFFD46B);
