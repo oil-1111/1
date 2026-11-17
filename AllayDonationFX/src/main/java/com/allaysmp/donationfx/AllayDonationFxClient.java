@@ -17,6 +17,10 @@ import net.minecraft.network.chat.ChatType;
 import com.mojang.authlib.GameProfile;
 
 import java.util.Locale;
+import java.util.List;
+import java.util.ArrayList;
+import net.minecraft.client.gui.components.PlayerFaceExtractor;
+import net.minecraft.world.item.component.ResolvableProfile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,6 +41,25 @@ public final class AllayDonationFxClient implements ClientModInitializer {
     private static volatile String donorName = "";
     private static volatile boolean fakePayment = false;
     private static volatile String fakeColour = "";
+    private static final List<DonationPopup> donationPopups = new ArrayList<>();
+    private static final int MAX_VISIBLE_POPUPS = 5;
+
+    private static final class DonationPopup {
+        final String donor;
+        final String amount;
+        final Effect effect;
+        final long createdAt;
+        final int donorColor;
+        final boolean fake;
+        DonationPopup(String donor, String amount, Effect effect, long createdAt, int donorColor, boolean fake) {
+            this.donor = donor;
+            this.amount = amount;
+            this.effect = effect;
+            this.createdAt = createdAt;
+            this.donorColor = donorColor;
+            this.fake = fake;
+        }
+    }
 
     @Override
     public void onInitializeClient() {
@@ -103,6 +126,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             fakePayment = false;
             fakeColour = "";
             startedAt = System.currentTimeMillis();
+            addDonationPopup(donorName, amountLabel, active, startedAt, donorColor(active, 0L), false);
             playDonationSound(active);
         }
     }
@@ -117,6 +141,9 @@ public final class AllayDonationFxClient implements ClientModInitializer {
                 : (effect == Effect.DRAGON ? 8_000L
                 : (effect == Effect.SIDE_POPUP ? 6_000L
                 : (effect == Effect.CINEMATIC ? 5_500L : 4_000L)));
+        synchronized (donationPopups) {
+            donationPopups.removeIf(popup -> System.currentTimeMillis() - popup.createdAt > 6_000L);
+        }
         if (elapsed > effectDuration) {
             active = Effect.NONE;
             has67 = false;
@@ -133,7 +160,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         int donorColor = donorColor(effect, elapsed);
 
         // Every payment gets the same compact side notification; tier effects layer over it.
-        if (showDonationPopup) drawDonationPopup(g, mc, width, height, elapsed, effect, donorColor);
+        drawDonationPopups(g, mc, width, height);
 
         if (effect == Effect.SIDE_POPUP) {
             // The side notification above is the complete $10K-tier animation.
@@ -222,15 +249,36 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         }
     }
 
+    private static void addDonationPopup(String donor, String amount, Effect effect, long createdAt, int color, boolean fake) {
+        synchronized (donationPopups) {
+            donationPopups.add(0, new DonationPopup(donor, amount, effect, createdAt, color, fake));
+            while (donationPopups.size() > 12) donationPopups.remove(donationPopups.size() - 1);
+        }
+    }
+
+    private static void drawDonationPopups(GuiGraphicsExtractor g, Minecraft mc, int width, int height) {
+        synchronized (donationPopups) {
+            long now = System.currentTimeMillis();
+            donationPopups.removeIf(popup -> now - popup.createdAt > 6_000L);
+            int shown = Math.min(MAX_VISIBLE_POPUPS, donationPopups.size());
+            for (int i = 0; i < shown; i++) {
+                DonationPopup popup = donationPopups.get(i);
+                drawDonationPopup(g, mc, width, height, now - popup.createdAt, i, popup);
+            }
+        }
+    }
+
     private static void drawDonationPopup(GuiGraphicsExtractor g, Minecraft mc, int width, int height,
-                                           long elapsed, Effect effect, int donorColor) {
+                                           long elapsed, int row, DonationPopup popup) {
+        Effect effect = popup.effect;
+        int donorColor = popup.donorColor;
         // One compact side card is used for every donation tier.
         // Tier-specific animations are rendered separately on top of this notification.
         int panelWidth = Math.min(166, width - 16);
         int panelHeight = 44;
         float slide = Math.min(1f, elapsed / 420f);
         int left = (int) (-panelWidth - 8 + slide * (panelWidth + 20));
-        int top = height / 3;
+        int top = height / 3 + row * 50;
         int tier = switch (effect) {
             case SIDE_POPUP, NONE -> 1;
             case EXPLOSION -> 2;
@@ -239,7 +287,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             case DRAGON -> 5;
         };
         int accent = switch (effect) {
-            case SIDE_POPUP, NONE -> fakePayment ? donorColor : 0xFF35D9B1;
+            case SIDE_POPUP, NONE -> popup.fake ? donorColor : 0xFF35D9B1;
             case EXPLOSION -> 0xFFFF8B35;
             case BLACK_HOLE -> 0xFFAD72FF;
             case CINEMATIC -> 0xFFFFD15C;
@@ -263,14 +311,19 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         int avatarY = top + 10;
         roundedFill(g, avatarX, avatarY, avatarX + 32, avatarY + 32, 7, withAlpha(accent, 100));
         roundedFill(g, avatarX + 2, avatarY + 2, avatarX + 30, avatarY + 30, 6, 0xFF202637);
-        String initial = donorName == null || donorName.isBlank() ? "?" : donorName.substring(0, 1).toUpperCase(Locale.ROOT);
-        g.text(mc.font, initial, avatarX + 16 - mc.font.width(initial) / 2, avatarY + 10, 0xFFFFFFFF, true);
+        // Draw the donor's actual Minecraft player head instead of a letter placeholder.
+        try {
+            PlayerFaceExtractor.extractRenderState(g, ResolvableProfile.createUnresolved(popup.donor), avatarX, avatarY, 32);
+        } catch (RuntimeException ignored) {
+            String initial = popup.donor == null || popup.donor.isBlank() ? "?" : popup.donor.substring(0, 1).toUpperCase(Locale.ROOT);
+            g.text(mc.font, initial, avatarX + 16 - mc.font.width(initial) / 2, avatarY + 10, 0xFFFFFFFF, true);
+        }
 
         int textX = left + 49;
         g.text(mc.font, "DONATION", textX, top + 7, 0xFFDDE7F5, true);
         int amountColor = effect == Effect.NONE || effect == Effect.SIDE_POPUP ? 0xFF8CFFD9 : accent;
-        g.text(mc.font, amountLabel, textX, top + 19, amountColor, true);
-        String name = donorName == null ? "" : donorName;
+        g.text(mc.font, popup.amount, textX, top + 19, amountColor, true);
+        String name = popup.donor == null ? "" : popup.donor;
         if (mc.font.width(name) > panelWidth - 57) {
             while (!name.isEmpty() && mc.font.width(name + "...") > panelWidth - 57) {
                 name = name.substring(0, name.length() - 1);
@@ -692,6 +745,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         showDonationPopup = true;
         setEffect(amount);
         startedAt = System.currentTimeMillis();
+        addDonationPopup(donorName, amountLabel, active, startedAt, donorColor(active, 0L), true);
         playDonationSound(active);
         source.sendFeedback(Component.literal("Playing local fake donation preview: " + amountLabel + " (" + colour + "). No payment is sent."));
         return 1;
