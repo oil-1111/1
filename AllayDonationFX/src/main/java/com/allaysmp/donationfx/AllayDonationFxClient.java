@@ -31,6 +31,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
     );
     private static volatile Effect active = Effect.NONE;
     private static volatile boolean has67 = false;
+    private static volatile boolean showDonationPopup = false;
     private static volatile long startedAt = 0L;
     private static volatile String amountLabel = "";
     private static volatile String donorName = "";
@@ -89,6 +90,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         // Keep punctuation out of the Easter-egg test: $6.7M becomes "67".
         String digitsOnly = matcher.group(2).replaceAll("[^0-9]", "");
         has67 = digitsOnly.contains("67");
+        showDonationPopup = true;
         if (amount >= 100_000_000d) active = Effect.DRAGON;
         else if (amount >= 10_000_000d) active = Effect.CINEMATIC;
         else if (amount >= 1_000_000d) active = Effect.BLACK_HOLE;
@@ -96,7 +98,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         else if (amount >= 10_000d) active = Effect.SIDE_POPUP;
         else active = Effect.NONE;
 
-        if (active != Effect.NONE || has67) {
+        if (showDonationPopup || active != Effect.NONE || has67) {
             amountLabel = "$" + matcher.group(2) + suffix;
             fakePayment = false;
             fakeColour = "";
@@ -108,16 +110,17 @@ public final class AllayDonationFxClient implements ClientModInitializer {
     private static void render(GuiGraphicsExtractor g) {
         Effect effect = active;
         boolean meme = has67;
-        if (effect == Effect.NONE && !meme) return;
+        if (effect == Effect.NONE && !meme && !showDonationPopup) return;
 
         long elapsed = System.currentTimeMillis() - startedAt;
-        long effectDuration = effect == Effect.NONE ? 2_500L
+        long effectDuration = effect == Effect.NONE ? 6_000L
                 : (effect == Effect.DRAGON ? 8_000L
                 : (effect == Effect.SIDE_POPUP ? 6_000L
                 : (effect == Effect.CINEMATIC ? 5_500L : 4_000L)));
         if (elapsed > effectDuration) {
             active = Effect.NONE;
             has67 = false;
+            showDonationPopup = false;
             fakePayment = false;
             fakeColour = "";
             return;
@@ -129,15 +132,11 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         float t = Math.min(1f, elapsed / 4000f);
         int donorColor = donorColor(effect, elapsed);
 
-        // The current starter build uses 2D HUD animation. The 3D cinematic is a planned upgrade.
+        // Every payment gets the same compact side notification; tier effects layer over it.
+        if (showDonationPopup) drawDonationPopup(g, mc, width, height, elapsed, effect, donorColor);
+
         if (effect == Effect.SIDE_POPUP) {
-            int x = (int) (-210 + Math.min(1f, elapsed / 500f) * 230);
-            drawTierRim(g, x + 102, height / 3 + 26, 213, 60, 1, fakePayment ? donorColor : 0xFF36D6A3);
-            roundedFill(g, x + 4, height / 3 + 4, x + 201, height / 3 + 48, 7, 0xF0202630);
-            roundedFill(g, x + 7, height / 3 + 7, x + 9, height / 3 + 45, 1, fakePayment ? donorColor : 0xFF36D6A3);
-            g.text(mc.font, "PAYMENT RECEIVED", x + 15, height / 3 + 7, 0xFFFFFFFF, true);
-            g.text(mc.font, amountLabel, x + 15, height / 3 + 20, 0xFF65FFC5, true);
-            g.text(mc.font, donorName, x + 15, height / 3 + 35, donorColor, true);
+            // The side notification above is the complete $10K-tier animation.
         } else if (effect == Effect.EXPLOSION) {
             float pulse = (float) Math.sin(elapsed / 90.0) * 0.5f + 0.5f;
             int r = (int) (22 + pulse * 18);
@@ -252,6 +251,62 @@ public final class AllayDonationFxClient implements ClientModInitializer {
                 g.text(mc.font, amountLabel, x - mc.font.width(amountLabel) / 2, y + 5, 0xFFFFFFFF, true);
             }
         }
+    }
+
+    private static void drawDonationPopup(GuiGraphicsExtractor g, Minecraft mc, int width, int height,
+                                           long elapsed, Effect effect, int donorColor) {
+        int panelWidth = Math.min(194, width - 20);
+        int panelHeight = 52;
+        float slide = Math.min(1f, elapsed / 420f);
+        int left = (int) (-panelWidth - 8 + slide * (panelWidth + 20));
+        int top = height / 3;
+        int tier = switch (effect) {
+            case SIDE_POPUP, NONE -> 1;
+            case EXPLOSION -> 2;
+            case BLACK_HOLE -> 3;
+            case CINEMATIC -> 4;
+            case DRAGON -> 5;
+        };
+        int accent = switch (effect) {
+            case SIDE_POPUP, NONE -> fakePayment ? donorColor : 0xFF35D9B1;
+            case EXPLOSION -> 0xFFFF8B35;
+            case BLACK_HOLE -> 0xFFAD72FF;
+            case CINEMATIC -> 0xFFFFD15C;
+            case DRAGON -> 0xFFFF4545;
+        };
+
+        if (tier == 5) {
+            drawRainbowRim(g, left + panelWidth / 2, top + panelHeight / 2, panelWidth, panelHeight, elapsed);
+            roundedFill(g, left + 5, top + 5, left + panelWidth - 5, top + panelHeight - 5, 8, 0xF020101A);
+        } else {
+            drawTierRim(g, left + panelWidth / 2, top + panelHeight / 2, panelWidth, panelHeight,
+                    Math.min(tier, 3), accent);
+            if (tier == 4) {
+                roundedFill(g, left + 5, top + 5, left + panelWidth - 5, top + 7, 2, 0xFFFFE8A0);
+                roundedFill(g, left + 5, top + panelHeight - 7, left + panelWidth - 5, top + panelHeight - 5, 2, 0xFFFFE8A0);
+            }
+        }
+
+        roundedFill(g, left + 4, top + 4, left + panelWidth - 4, top + panelHeight - 4, 7, 0xF0191D29);
+        int avatarX = left + 10;
+        int avatarY = top + 10;
+        roundedFill(g, avatarX, avatarY, avatarX + 32, avatarY + 32, 7, withAlpha(accent, 100));
+        roundedFill(g, avatarX + 2, avatarY + 2, avatarX + 30, avatarY + 30, 6, 0xFF202637);
+        String initial = donorName == null || donorName.isBlank() ? "?" : donorName.substring(0, 1).toUpperCase(Locale.ROOT);
+        g.text(mc.font, initial, avatarX + 16 - mc.font.width(initial) / 2, avatarY + 10, 0xFFFFFFFF, true);
+
+        int textX = left + 49;
+        g.text(mc.font, "DONATION", textX, top + 7, 0xFFDDE7F5, true);
+        int amountColor = effect == Effect.NONE || effect == Effect.SIDE_POPUP ? 0xFF8CFFD9 : accent;
+        g.text(mc.font, amountLabel, textX, top + 19, amountColor, true);
+        String name = donorName == null ? "" : donorName;
+        if (mc.font.width(name) > panelWidth - 57) {
+            while (!name.isEmpty() && mc.font.width(name + "...") > panelWidth - 57) {
+                name = name.substring(0, name.length() - 1);
+            }
+            name += "...";
+        }
+        g.text(mc.font, name, textX, top + 34, donorColor, true);
     }
 
     private static void drawRedDragon(GuiGraphicsExtractor g, int x, int y, long elapsed) {
@@ -522,6 +577,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         fakePayment = true;
         fakeColour = colour;
         has67 = matcher.group(1).replaceAll("[^0-9]", "").contains("67");
+        showDonationPopup = true;
         setEffect(amount);
         startedAt = System.currentTimeMillis();
         playDonationSound(active);
