@@ -2,9 +2,14 @@ package com.allaysmp.donationfx;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.sounds.SoundEvents;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.PlayerChatMessage;
@@ -29,6 +34,8 @@ public final class AllayDonationFxClient implements ClientModInitializer {
     private static volatile long startedAt = 0L;
     private static volatile String amountLabel = "";
     private static volatile String donorName = "";
+    private static volatile boolean fakePayment = false;
+    private static volatile String fakeColour = "";
 
     @Override
     public void onInitializeClient() {
@@ -37,6 +44,24 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         HudElementRegistry.addLast(
                 Identifier.fromNamespaceAndPath("allaydonationfx", "effects"),
                 (graphics, deltaTracker) -> render(graphics)
+        );
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, buildContext) ->
+                dispatcher.register(ClientCommands.literal("fakepay")
+                        .then(ClientCommands.argument("amount", StringArgumentType.word())
+                                .executes(context -> runFakePay(
+                                        context.getSource(),
+                                        StringArgumentType.getString(context, "amount"),
+                                        "gold"
+                                ))
+                                .then(ClientCommands.argument("colour", StringArgumentType.word())
+                                        .executes(context -> runFakePay(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "amount"),
+                                                StringArgumentType.getString(context, "colour")
+                                        ))
+                                )
+                        )
+                )
         );
     }
 
@@ -72,7 +97,10 @@ public final class AllayDonationFxClient implements ClientModInitializer {
 
         if (active != Effect.NONE || has67) {
             amountLabel = "$" + matcher.group(2) + suffix;
+            fakePayment = false;
+            fakeColour = "";
             startedAt = System.currentTimeMillis();
+            playDonationSound(active);
         }
     }
 
@@ -85,6 +113,8 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         if (elapsed > 4_000L) {
             active = Effect.NONE;
             has67 = false;
+            fakePayment = false;
+            fakeColour = "";
             return;
         }
 
@@ -92,7 +122,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         int width = mc.getWindow().getGuiScaledWidth();
         int height = mc.getWindow().getGuiScaledHeight();
         float t = Math.min(1f, elapsed / 4000f);
-        int donorColor = donorColor(effect);
+        int donorColor = donorColor(effect, elapsed);
 
         // The current starter build uses 2D HUD animation. The 3D cinematic is a planned upgrade.
         if (effect == Effect.SIDE_POPUP) {
@@ -125,6 +155,11 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + 18, donorColor, true);
         }
 
+        if (fakePayment) {
+            String fakeLabel = "(Fake payment - local preview only)";
+            g.text(mc.font, fakeLabel, width / 2 - mc.font.width(fakeLabel) / 2, (int) (height * 0.78f), 0xFFFF7777, true);
+        }
+
         // 67 Easter egg: always drawn last so it stacks over the normal donation effect,
         // including the 10M cinematic. The amount test is performed on the payment digits.
         if (meme) {
@@ -155,7 +190,18 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         }
     }
 
-    private static int donorColor(Effect effect) {
+    private static int donorColor(Effect effect, long elapsed) {
+        if (fakePayment) {
+            return switch (fakeColour) {
+                case "red" -> 0xFFFF5555;
+                case "blue" -> 0xFF55AAFF;
+                case "green" -> 0xFF55FF77;
+                case "crimson" -> 0xFFDC143C;
+                case "rainbow" -> new int[] {0xFFFF5555, 0xFFFFAA33, 0xFFFFFF55, 0xFF55FF77, 0xFF55AAFF, 0xFFCC66FF}[(int) ((elapsed / 140L) % 6)];
+                case "galaxy" -> new int[] {0xFF8B5CFF, 0xFF477BFF, 0xFFD36BFF, 0xFF54C7FF}[(int) ((elapsed / 180L) % 4)];
+                default -> 0xFFFFD34D;
+            };
+        }
         return switch (effect) {
             case SIDE_POPUP -> 0xFF65CFFF;
             case EXPLOSION -> 0xFFFFA34D;
@@ -163,6 +209,65 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             case CINEMATIC -> 0xFFFFD76A;
             default -> 0xFFFFFFFF;
         };
+    }
+
+    private static int runFakePay(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource source, String amountInput, String colourInput) {
+        String colour = colourInput.toLowerCase(Locale.ROOT);
+        if (!java.util.Set.of("red", "blue", "green", "gold", "crimson", "rainbow", "galaxy").contains(colour)) {
+            source.sendFeedback(Component.literal("Colour must be: red, blue, green, gold, crimson, rainbow or galaxy."));
+            return 0;
+        }
+
+        Matcher matcher = Pattern.compile("(?i)\\$?([0-9][0-9,]*(?:\\.[0-9]+)?)([KMB]?)").matcher(amountInput);
+        if (!matcher.matches()) {
+            source.sendFeedback(Component.literal("Usage: /fakepay <amount> [red|blue|green|gold|crimson|rainbow|galaxy]"));
+            return 0;
+        }
+
+        String number = matcher.group(1).replace(",", "");
+        String suffix = matcher.group(2).toUpperCase(Locale.ROOT);
+        double amount;
+        try {
+            amount = Double.parseDouble(number) * switch (suffix) {
+                case "K" -> 1_000d;
+                case "M" -> 1_000_000d;
+                case "B" -> 1_000_000_000d;
+                default -> 1d;
+            };
+        } catch (NumberFormatException exception) {
+            source.sendFeedback(Component.literal("That amount isn't valid."));
+            return 0;
+        }
+
+        donorName = "FakeDonor";
+        amountLabel = "$" + matcher.group(1) + suffix;
+        fakePayment = true;
+        fakeColour = colour;
+        has67 = matcher.group(1).replaceAll("[^0-9]", "").contains("67");
+        setEffect(amount);
+        startedAt = System.currentTimeMillis();
+        playDonationSound(active);
+        source.sendFeedback(Component.literal("Playing local fake donation preview: " + amountLabel + " (" + colour + "). No payment is sent."));
+        return 1;
+    }
+
+    private static void setEffect(double amount) {
+        if (amount >= 10_000_000d) active = Effect.CINEMATIC;
+        else if (amount >= 1_000_000d) active = Effect.BLACK_HOLE;
+        else if (amount >= 100_000d) active = Effect.EXPLOSION;
+        else if (amount >= 10_000d) active = Effect.SIDE_POPUP;
+        else active = Effect.NONE;
+    }
+
+    private static void playDonationSound(Effect effect) {
+        Minecraft mc = Minecraft.getInstance();
+        switch (effect) {
+            case SIDE_POPUP -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_IN, 0.9F));
+            case EXPLOSION -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ENTITY_GENERIC_EXPLODE, 0.85F));
+            case BLACK_HOLE -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BLOCK_END_PORTAL_SPAWN, 1.0F));
+            case CINEMATIC -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0F));
+            default -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.8F));
+        }
     }
 
     private enum Effect { NONE, SIDE_POPUP, EXPLOSION, BLACK_HOLE, CINEMATIC }
