@@ -255,37 +255,96 @@ public final class AllayDonationFxClient implements ClientModInitializer {
     }
 
     private static void drawRedDragon(GuiGraphicsExtractor g, int x, int y, long elapsed) {
-        int flap = (int) (Math.sin(elapsed / 115.0) * 13);
+        // Stylised red Ender-Dragon-inspired silhouette with layered shading and articulated wings.
+        int flap = (int) (Math.sin(elapsed / 145.0) * 18);
+        int highlight = 0xFFFF6658;
         int red = 0xFFE52D35;
-        int darkRed = 0xFF9E1728;
-        int shadow = 0xAA310C18;
-        // Tail and long body.
-        g.fill(x - 78, y + 8, x - 35, y + 16, darkRed);
-        g.fill(x - 100, y + 1, x - 76, y + 10, red);
-        g.fill(x - 115, y - 7, x - 98, y + 4, darkRed);
-        g.fill(x - 44, y - 2, x + 28, y + 19, red);
-        g.fill(x - 30, y + 14, x + 20, y + 20, shadow);
-        // Neck, head, snout, horns and bright eye.
-        g.fill(x + 18, y - 11, x + 47, y + 10, red);
-        g.fill(x + 40, y - 6, x + 68, y + 5, red);
-        g.fill(x + 48, y - 15, x + 57, y - 6, 0xFFFF6B45);
-        g.fill(x + 28, y - 19, x + 34, y - 8, darkRed);
-        g.fill(x + 44, y - 19, x + 50, y - 9, darkRed);
-        g.fill(x + 53, y - 2, x + 58, y + 1, 0xFFFFFF55);
-        // Wings flap as the dragon flies past.
-        g.fill(x - 28, y - 3 - flap, x + 4, y - 10 - flap, darkRed);
-        g.fill(x - 24, y - 10 - flap, x - 14, y - 34 - flap, red);
-        g.fill(x - 14, y - 10 - flap, x + 5, y - 27 - flap, red);
-        g.fill(x - 8, y - 5 - flap, x + 18, y - 19 - flap, darkRed);
-        g.fill(x - 18, y + 12 + flap, x + 3, y + 20 + flap, darkRed);
-        // Legs and claws.
-        g.fill(x - 26, y + 14, x - 17, y + 29, red);
-        g.fill(x + 5, y + 13, x + 14, y + 27, red);
-        g.fill(x - 30, y + 26, x - 14, y + 30, 0xFFFFB4A0);
-        g.fill(x + 2, y + 24, x + 18, y + 28, 0xFFFFB4A0);
-        // Short flame trail.
-        g.fill(x - 140, y + 2, x - 118, y + 9, 0xCCFF6A32);
-        g.fill(x - 155, y - 2, x - 137, y + 5, 0x99FFD34D);
+        int mid = 0xFFC51E32;
+        int dark = 0xFF751326;
+        int deepest = 0xFF3B1024;
+        int membrane = 0xFF9F203C;
+        int membraneLight = 0xFFD33A4B;
+
+        // Long tapering tail, with a shaded ridge and pointed-looking stepped tip.
+        g.fill(x - 126, y - 4, x - 103, y + 3, deepest);
+        g.fill(x - 111, y - 1, x - 82, y + 7, dark);
+        g.fill(x - 91, y + 2, x - 57, y + 11, mid);
+        g.fill(x - 72, y + 5, x - 39, y + 14, red);
+        g.fill(x - 104, y - 3, x - 80, y + 1, highlight);
+
+        // Rear wing: broad swept shape, animated up and down, with dark outer edge.
+        int rearY = y - 8 - flap / 2;
+        g.fill(x - 47, rearY - 31, x - 36, rearY + 5, deepest);
+        g.fill(x - 45, rearY - 29, x - 8, rearY - 20, dark);
+        g.fill(x - 37, rearY - 21, x + 1, rearY - 10, membrane);
+        g.fill(x - 28, rearY - 12, x + 12, rearY - 2, membraneLight);
+        g.fill(x - 42, rearY - 29, x - 35, rearY - 4, red);
+        g.fill(x - 12, rearY - 19, x - 5, rearY - 1, dark);
+        g.fill(x + 2, rearY - 9, x + 8, rearY + 2, dark);
+
+        // Main wing: high arched shoulder, long finger-like spars and red membrane.
+        int wingY = y - 12 - flap;
+        g.fill(x - 26, wingY - 42, x - 13, wingY + 4, deepest);
+        g.fill(x - 22, wingY - 39, x + 5, wingY - 31, dark);
+        g.fill(x - 15, wingY - 31, x + 23, wingY - 22, membrane);
+        g.fill(x - 8, wingY - 22, x + 36, wingY - 13, membraneLight);
+        g.fill(x + 2, wingY - 13, x + 42, wingY - 5, dark);
+        g.fill(x - 19, wingY - 37, x - 13, wingY - 7, red);
+        g.fill(x + 3, wingY - 29, x + 9, wingY - 3, red);
+        g.fill(x + 25, wingY - 19, x + 31, wingY - 2, red);
+        g.fill(x + 37, wingY - 11, x + 43, wingY - 1, deepest);
+        g.fill(x - 19, wingY - 40, x - 10, wingY - 35, highlight);
+
+        // Torso is built from overlapping shaded plates to give it volume.
+        g.fill(x - 55, y - 5, x + 31, y + 23, deepest);
+        g.fill(x - 51, y - 12, x + 26, y + 15, dark);
+        g.fill(x - 45, y - 13, x + 23, y + 10, mid);
+        g.fill(x - 37, y - 12, x + 14, y + 3, red);
+        g.fill(x - 34, y - 13, x + 7, y - 8, highlight);
+        g.fill(x - 27, y + 9, x + 23, y + 17, deepest);
+        // Raised back spines.
+        for (int i = 0; i < 5; i++) {
+            int sx = x - 31 + i * 12;
+            g.fill(sx, y - 20 + (i % 2) * 3, sx + 6, y - 10, dark);
+            g.fill(sx + 1, y - 19 + (i % 2) * 3, sx + 4, y - 13, highlight);
+        }
+        // Belly plates.
+        for (int i = 0; i < 4; i++) {
+            int sx = x - 21 + i * 12;
+            g.fill(sx, y + 12, sx + 9, y + 17, 0xFFED5960);
+            g.fill(sx + 1, y + 17, sx + 8, y + 19, dark);
+        }
+
+        // Long neck rises into a dragon-shaped angular head.
+        g.fill(x + 16, y - 15, x + 48, y + 5, deepest);
+        g.fill(x + 19, y - 20, x + 47, y + 1, mid);
+        g.fill(x + 22, y - 20, x + 43, y - 5, red);
+        g.fill(x + 38, y - 24, x + 69, y - 8, dark);
+        g.fill(x + 42, y - 22, x + 72, y - 11, red);
+        g.fill(x + 57, y - 17, x + 79, y - 9, mid);
+        g.fill(x + 68, y - 15, x + 81, y - 10, deepest);
+        // Brow, horns, glowing eye and jaw highlight.
+        g.fill(x + 47, y - 29, x + 54, y - 18, deepest);
+        g.fill(x + 61, y - 27, x + 68, y - 17, deepest);
+        g.fill(x + 49, y - 22, x + 55, y - 18, highlight);
+        g.fill(x + 57, y - 18, x + 62, y - 14, 0xFFFFF0A0);
+        g.fill(x + 62, y - 17, x + 66, y - 14, 0xFFFFFFFF);
+        g.fill(x + 54, y - 8, x + 75, y - 5, 0xFFFF8B79);
+
+        // Far legs and near legs, shaded to imply depth.
+        g.fill(x - 26, y + 14, x - 18, y + 34, deepest);
+        g.fill(x - 23, y + 14, x - 15, y + 31, mid);
+        g.fill(x + 8, y + 12, x + 17, y + 31, deepest);
+        g.fill(x + 10, y + 12, x + 18, y + 28, red);
+        g.fill(x - 33, y + 30, x - 12, y + 35, dark);
+        g.fill(x + 4, y + 27, x + 23, y + 32, dark);
+        g.fill(x - 31, y + 30, x - 24, y + 32, highlight);
+        g.fill(x + 7, y + 27, x + 13, y + 29, highlight);
+
+        // Ember trail behind the dragon.
+        g.fill(x - 154, y + 1, x - 127, y + 8, 0xCCFF542E);
+        g.fill(x - 170, y - 4, x - 148, y + 3, 0x99FFD34D);
+        g.fill(x - 137, y + 10, x - 121, y + 14, 0x99FF392B);
     }
 
     private static void drawRainbowRim(GuiGraphicsExtractor g, int centerX, int centerY, int width, int height, long elapsed) {
