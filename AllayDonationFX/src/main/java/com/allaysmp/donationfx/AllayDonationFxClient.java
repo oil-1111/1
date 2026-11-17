@@ -45,6 +45,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
     private static final int MAX_VISIBLE_POPUPS = 5;
     private static String lastPaymentMessage = "";
     private static long lastPaymentMessageAt = 0L;
+    private static long lastSlotRollSoundElapsed = -1L;
 
     private static final class DonationPopup {
         final String donor;
@@ -317,6 +318,16 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         int right = left + machineWidth;
         int bottom = top + machineHeight;
         float pulse = (float)(0.5 + 0.5 * Math.sin(elapsed / 190.0));
+
+        // Soft mechanical ticks while the reels spin; the pitch rises as they speed up.
+        long finalStopAt = 2_400L + (reelValues.length() - 1) * 850L;
+        if (elapsed < lastSlotRollSoundElapsed) lastSlotRollSoundElapsed = -1L;
+        if (elapsed < finalStopAt && (lastSlotRollSoundElapsed < 0L || elapsed - lastSlotRollSoundElapsed >= 145L)) {
+            float spinProgress = Math.min(1.0F, elapsed / (float) finalStopAt);
+            float pitch = 0.65F + spinProgress * 0.55F;
+            mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.32F, pitch));
+            lastSlotRollSoundElapsed = elapsed;
+        }
 
         // Cabinet, polished gold trim, inner glass and top marquee.
         roundedFill(g, left - 5, top - 5, right + 5, bottom + 5, 17, 0xAA000000);
