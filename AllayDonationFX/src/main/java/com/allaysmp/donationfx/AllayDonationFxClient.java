@@ -450,33 +450,40 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         int cy = height / 2 - 24;
         float pulse = (float) (0.5 + 0.5 * Math.sin(elapsed / 260.0));
         float rotation = elapsed / 520.0f;
-        int core = 28 + (int) (pulse * 3);
+        // Start as a tiny gravitational seed, then expand with accelerating ease-in growth.
+        float progress = Math.min(1.0f, elapsed / 3_200.0f);
+        float growth = 0.10f + 0.90f * progress * progress;
+        int core = Math.max(4, (int) (28 * growth)) + (int) (pulse * 3);
 
-        // Subtle gravitational vignette and distant stars.
-        g.fill(cx - 150, cy - 115, cx + 150, cy + 115, 0x180A0618);
+        // Subtle gravitational vignette and distant stars expand with the black hole.
+        int vignetteX = (int) (150 * growth);
+        int vignetteY = (int) (115 * growth);
+        g.fill(cx - vignetteX, cy - vignetteY, cx + vignetteX, cy + vignetteY, 0x180A0618);
         for (int i = 0; i < 24; i++) {
             double a = i * 2.399;
-            int sx = cx + (int) (Math.cos(a) * (72 + (i % 4) * 25));
-            int sy = cy + (int) (Math.sin(a) * (42 + (i % 5) * 17));
+            int sx = cx + (int) (Math.cos(a) * (72 + (i % 4) * 25) * growth);
+            int sy = cy + (int) (Math.sin(a) * (42 + (i % 5) * 17) * growth);
             int twinkle = (int) (90 + 100 * (0.5 + 0.5 * Math.sin(elapsed / 180.0 + i)));
-            g.fill(sx, sy, sx + (i % 3 == 0 ? 3 : 2), sy + (i % 3 == 0 ? 3 : 2), withAlpha(0xFFD9D2FF, twinkle));
+            int starSize = Math.max(1, (int) ((i % 3 == 0 ? 3 : 2) * growth));
+            g.fill(sx, sy, sx + starSize, sy + starSize, withAlpha(0xFFD9D2FF, twinkle));
         }
 
-        // Accretion disk: several flattened, glowing rings behind the event horizon.
-        drawEllipseBand(g, cx, cy + 2, 104, 37, 12, 0x553F24A8);
-        drawEllipseBand(g, cx, cy + 1, 94, 30, 9, 0xBB8B4BFF);
-        drawEllipseBand(g, cx, cy, 82, 23, 7, 0xFFFFB65E);
-        drawEllipseBand(g, cx, cy - 1, 70, 17, 5, 0xFFFFE6A0);
-        drawEllipseBand(g, cx, cy - 2, 58, 12, 3, 0xFFFFFFFF);
+        // Accretion disk grows from a compact ring and accelerates outward.
+        drawEllipseBand(g, cx, cy + (int)(2 * growth), (int)(104 * growth), (int)(37 * growth), Math.max(1, (int)(12 * growth)), 0x553F24A8);
+        drawEllipseBand(g, cx, cy + (int)growth, (int)(94 * growth), (int)(30 * growth), Math.max(1, (int)(9 * growth)), 0xBB8B4BFF);
+        drawEllipseBand(g, cx, cy, (int)(82 * growth), (int)(23 * growth), Math.max(1, (int)(7 * growth)), 0xFFFFB65E);
+        drawEllipseBand(g, cx, cy - (int)growth, (int)(70 * growth), (int)(17 * growth), Math.max(1, (int)(5 * growth)), 0xFFFFE6A0);
+        drawEllipseBand(g, cx, cy - (int)(2 * growth), (int)(58 * growth), (int)(12 * growth), Math.max(1, (int)(3 * growth)), 0xFFFFFFFF);
 
-        // Streaks in the disk suggest fast orbital motion.
+        // Streaks orbit faster as the disk expands.
         for (int i = 0; i < 18; i++) {
             double a = i * 0.71 + rotation;
-            int rx = 48 + (i % 5) * 10;
-            int ry = 12 + (i % 4) * 4;
+            int rx = (int) ((48 + (i % 5) * 10) * growth);
+            int ry = (int) ((12 + (i % 4) * 4) * growth);
             int px = cx + (int) (Math.cos(a) * rx);
             int py = cy + (int) (Math.sin(a) * ry);
-            g.fill(px - 5, py - 1, px + 5, py + 2, (i % 3 == 0) ? 0xFFFFE7B1 : 0xCCB78BFF);
+            int streakHalf = Math.max(1, (int)(5 * growth));
+            g.fill(px - streakHalf, py - 1, px + streakHalf, py + 2, (i % 3 == 0) ? 0xFFFFE7B1 : 0xCCB78BFF);
         }
 
         // Bright gravitational-lensing halo, then the perfectly dark event horizon.
