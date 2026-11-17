@@ -110,7 +110,8 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         if (effect == Effect.NONE && !meme) return;
 
         long elapsed = System.currentTimeMillis() - startedAt;
-        if (elapsed > 4_000L) {
+        long effectDuration = effect == Effect.NONE ? 2_500L : (effect == Effect.CINEMATIC ? 5_500L : 4_000L);
+        if (elapsed > effectDuration) {
             active = Effect.NONE;
             has67 = false;
             fakePayment = false;
@@ -128,21 +129,21 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         if (effect == Effect.SIDE_POPUP) {
             int x = (int) (-210 + Math.min(1f, elapsed / 500f) * 230);
             g.fill(x, height / 3, x + 205, height / 3 + 52, 0xE0202630);
-            g.fill(x, height / 3, x + 5, height / 3 + 52, 0xFF36D6A3);
+            g.fill(x, height / 3, x + 5, height / 3 + 52, fakePayment ? donorColor : 0xFF36D6A3);
             g.text(mc.font, "PAYMENT RECEIVED", x + 15, height / 3 + 7, 0xFFFFFFFF, true);
             g.text(mc.font, amountLabel, x + 15, height / 3 + 20, 0xFF65FFC5, true);
             g.text(mc.font, donorName, x + 15, height / 3 + 35, donorColor, true);
         } else if (effect == Effect.EXPLOSION) {
             float pulse = (float) Math.sin(elapsed / 90.0) * 0.5f + 0.5f;
             int r = (int) (22 + pulse * 18);
-            g.fill(width / 2 - r, height / 2 - r, width / 2 + r, height / 2 + r, 0x66FF8A24);
+            g.fill(width / 2 - r, height / 2 - r, width / 2 + r, height / 2 + r, fakePayment ? withAlpha(donorColor, 0x66) : 0x66FF8A24);
             g.text(mc.font, "BOOM!  " + amountLabel, width / 2 - 55, height / 2 - 12, 0xFFFFD36A, true);
             g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + 5, donorColor, true);
         } else if (effect == Effect.BLACK_HOLE) {
             int radius = (int) (18 + Math.sin(elapsed / 180.0) * 5);
             g.fill(width / 2 - radius * 2, height / 2 - radius * 2, width / 2 + radius * 2, height / 2 + radius * 2, 0x331B0B38);
             g.fill(width / 2 - radius, height / 2 - radius, width / 2 + radius, height / 2 + radius, 0xFF080512);
-            g.fill(width / 2 - radius - 5, height / 2 - 2, width / 2 + radius + 5, height / 2 + 2, 0xBB9D65FF);
+            g.fill(width / 2 - radius - 5, height / 2 - 2, width / 2 + radius + 5, height / 2 + 2, fakePayment ? withAlpha(donorColor, 0xBB) : 0xBB9D65FF);
             g.text(mc.font, "BLACK HOLE  " + amountLabel, width / 2 - 65, height / 2 + radius + 14, 0xFFDCCBFF, true);
             g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + radius + 27, donorColor, true);
         } else if (effect == Effect.CINEMATIC) {
@@ -150,7 +151,7 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             g.fill(0, 0, width, bar, 0xFF050509);
             g.fill(0, height - bar, width, height, 0xFF050509);
             g.fill(0, 0, width, height, 0x22000000);
-            g.text(mc.font, "TEN MILLION!", width / 2 - 45, height / 2 - 18, 0xFFFFD76A, true);
+            g.text(mc.font, "TEN MILLION!", width / 2 - 45, height / 2 - 18, fakePayment ? donorColor : 0xFFFFD76A, true);
             g.text(mc.font, amountLabel, width / 2 - mc.font.width(amountLabel) / 2, height / 2 + 2, 0xFFFFFFFF, true);
             g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + 18, donorColor, true);
         }
@@ -168,26 +169,31 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             boolean solo67 = effect == Effect.NONE;
             int y = solo67 ? (int) (height / 2f - 23 - bounce) : (int) (height * 0.18f - bounce);
             int x = width / 2;
-            int glow = solo67 ? (0x550000FF | ((int) (55 + pulse * 90) << 24))
-                              : (0x5500FF00 | ((int) (55 + pulse * 90) << 24));
+            int glow = fakePayment ? withAlpha(donorColor, (int) (75 + pulse * 100))
+                    : (solo67 ? (0x550000FF | ((int) (55 + pulse * 90) << 24))
+                              : (0x5500FF00 | ((int) (55 + pulse * 90) << 24)));
             int size = solo67 ? 88 + (int) (pulse * 8) : 76 + (int) (pulse * 8);
             // A solo $67 gets a blue popup; stacked 67s use the signature green glow.
             g.fill(x - size - 9, y - 31, x + size + 9, y + 43, glow);
             g.fill(x - size, y - 25, x + size, y + 37, solo67 ? 0xDD07152B : 0xDD071B0A);
             g.fill(x - size + 3, y - 22, x + size - 3, y + 34, solo67 ? 0xAA123B70 : 0xAA123B12);
             g.text(mc.font, "67", x - 17, y - 8, 0xFFFFFFFF, true);
-            g.text(mc.font, "67", x - 16, y - 9, solo67 ? 0xFF55B8FF : 0xFF8CFF36, true);
+            g.text(mc.font, "67", x - 16, y - 9, fakePayment ? donorColor : (solo67 ? 0xFF55B8FF : 0xFF8CFF36), true);
             if (solo67) {
                 g.text(mc.font, amountLabel, x - mc.font.width(amountLabel) / 2, y + 15, 0xFFFFFFFF, true);
                 g.text(mc.font, donorName, x - mc.font.width(donorName) / 2, y + 28, 0xFF9CD9FF, true);
             }
             // Small pixel-like sparks around the popup.
-            int spark = solo67 ? 0xFF80CFFF : 0xFF9DFF55;
+            int spark = fakePayment ? donorColor : (solo67 ? 0xFF80CFFF : 0xFF9DFF55);
             g.fill(x - size - 13, y - 12, x - size - 7, y - 6, spark);
             g.fill(x + size + 7, y + 8, x + size + 13, y + 14, spark);
             g.fill(x - 42, y + 40, x - 36, y + 46, spark);
             g.fill(x + 36, y - 34, x + 42, y - 28, spark);
         }
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (alpha << 24) | (color & 0x00FFFFFF);
     }
 
     private static int donorColor(Effect effect, long elapsed) {
