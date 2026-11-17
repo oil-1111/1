@@ -130,19 +130,24 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         // The current starter build uses 2D HUD animation. The 3D cinematic is a planned upgrade.
         if (effect == Effect.SIDE_POPUP) {
             int x = (int) (-210 + Math.min(1f, elapsed / 500f) * 230);
-            g.fill(x, height / 3, x + 205, height / 3 + 52, 0xE0202630);
-            g.fill(x, height / 3, x + 5, height / 3 + 52, fakePayment ? donorColor : 0xFF36D6A3);
+            drawTierRim(g, x + 102, height / 3 + 26, 213, 60, 1, fakePayment ? donorColor : 0xFF36D6A3);
+            roundedFill(g, x + 4, height / 3 + 4, x + 201, height / 3 + 48, 7, 0xF0202630);
+            roundedFill(g, x + 7, height / 3 + 7, x + 9, height / 3 + 45, 1, fakePayment ? donorColor : 0xFF36D6A3);
             g.text(mc.font, "PAYMENT RECEIVED", x + 15, height / 3 + 7, 0xFFFFFFFF, true);
             g.text(mc.font, amountLabel, x + 15, height / 3 + 20, 0xFF65FFC5, true);
             g.text(mc.font, donorName, x + 15, height / 3 + 35, donorColor, true);
         } else if (effect == Effect.EXPLOSION) {
             float pulse = (float) Math.sin(elapsed / 90.0) * 0.5f + 0.5f;
             int r = (int) (22 + pulse * 18);
+            drawTierRim(g, width / 2, height / 2 + 1, 190, 62, 2, fakePayment ? donorColor : 0xFFFF9638);
+            roundedFill(g, width / 2 - 91, height / 2 - 29, width / 2 + 91, height / 2 + 29, 9, 0xE51D100B);
             g.fill(width / 2 - r, height / 2 - r, width / 2 + r, height / 2 + r, fakePayment ? withAlpha(donorColor, 0x66) : 0x66FF8A24);
             g.text(mc.font, "BOOM!  " + amountLabel, width / 2 - 55, height / 2 - 12, 0xFFFFD36A, true);
             g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + 5, donorColor, true);
         } else if (effect == Effect.BLACK_HOLE) {
             int radius = (int) (18 + Math.sin(elapsed / 180.0) * 5);
+            drawTierRim(g, width / 2, height / 2 + radius + 22, 218, 54, 3, fakePayment ? donorColor : 0xFFB477FF);
+            roundedFill(g, width / 2 - 105, height / 2 + radius - 3, width / 2 + 105, height / 2 + radius + 48, 10, 0xE5100B1D);
             g.fill(width / 2 - radius * 2, height / 2 - radius * 2, width / 2 + radius * 2, height / 2 + radius * 2, 0x331B0B38);
             g.fill(width / 2 - radius, height / 2 - radius, width / 2 + radius, height / 2 + radius, 0xFF080512);
             g.fill(width / 2 - radius - 5, height / 2 - 2, width / 2 + radius + 5, height / 2 + 2, fakePayment ? withAlpha(donorColor, 0xBB) : 0xBB9D65FF);
@@ -219,6 +224,30 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             if (solo67) {
                 g.text(mc.font, amountLabel, x - mc.font.width(amountLabel) / 2, y + 5, 0xFFFFFFFF, true);
             }
+        }
+    }
+
+    private static void drawTierRim(GuiGraphicsExtractor g, int centerX, int centerY, int width, int height, int tier, int accent) {
+        int halfW = width / 2;
+        int halfH = height / 2;
+        int radius = tier == 1 ? 8 : (tier == 2 ? 11 : 14);
+        int thickness = tier == 1 ? 2 : (tier == 2 ? 3 : 4);
+        roundedFill(g, centerX - halfW, centerY - halfH, centerX + halfW, centerY + halfH, radius, withAlpha(accent, tier == 1 ? 210 : 235));
+        roundedFill(g, centerX - halfW + thickness, centerY - halfH + thickness,
+                centerX + halfW - thickness, centerY + halfH - thickness,
+                Math.max(2, radius - thickness), 0xEE10131D);
+        // Higher tiers get extra inset highlights to make the frame feel more premium.
+        if (tier >= 2) {
+            roundedFill(g, centerX - halfW + 7, centerY - halfH + 5,
+                    centerX + halfW - 7, centerY - halfH + 7, 3, withAlpha(accent, 175));
+            roundedFill(g, centerX - halfW + 7, centerY + halfH - 7,
+                    centerX + halfW - 7, centerY + halfH - 5, 3, withAlpha(accent, 135));
+        }
+        if (tier >= 3) {
+            roundedFill(g, centerX - halfW + 5, centerY - halfH + 12,
+                    centerX - halfW + 8, centerY + halfH - 12, 2, withAlpha(accent, 180));
+            roundedFill(g, centerX + halfW - 8, centerY - halfH + 12,
+                    centerX + halfW - 5, centerY + halfH - 12, 2, withAlpha(accent, 180));
         }
     }
 
