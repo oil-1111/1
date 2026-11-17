@@ -118,13 +118,27 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             g.text(mc.font, amountLabel, width / 2 - 24, height / 2 + 2, 0xFFFFFFFF, true);
         }
 
-        // 67 overlay intentionally stacks on top of whichever tier fired.
+        // 67 Easter egg: always drawn last so it stacks over the normal donation effect,
+        // including the 10M cinematic. The amount test is performed on the payment digits.
         if (meme) {
             float bounce = (float) Math.abs(Math.sin(elapsed / 115.0)) * 16f;
+            float pulse = (float) (0.5 + 0.5 * Math.sin(elapsed / 95.0));
             int y = (int) (height * 0.18f - bounce);
             int x = width / 2;
-            g.fill(x - 62, y - 18, x + 62, y + 28, 0xAA071B0A);
-            g.text(mc.font, "67", x - 17, y - 9, 0xFF8CFF36, true);
+            int glow = 0x5500FF00 | ((int) (55 + pulse * 90) << 24);
+            int size = 76 + (int) (pulse * 8);
+            // Layered green glow, dark backing plate, and bright centre.
+            g.fill(x - size - 9, y - 31, x + size + 9, y + 43, glow);
+            g.fill(x - size, y - 25, x + size, y + 37, 0xDD071B0A);
+            g.fill(x - size + 3, y - 22, x + size - 3, y + 34, 0xAA123B12);
+            g.text(mc.font, "67", x - 17, y - 8, 0xFFFFFFFF, true);
+            g.text(mc.font, "67", x - 16, y - 9, 0xFF8CFF36, true);
+            // Small pixel-like sparks around the popup.
+            int spark = 0xFF9DFF55;
+            g.fill(x - size - 13, y - 12, x - size - 7, y - 6, spark);
+            g.fill(x + size + 7, y + 8, x + size + 13, y + 14, spark);
+            g.fill(x - 42, y + 40, x - 36, y + 46, spark);
+            g.fill(x + 36, y - 34, x + 42, y - 28, spark);
         }
     }
 
