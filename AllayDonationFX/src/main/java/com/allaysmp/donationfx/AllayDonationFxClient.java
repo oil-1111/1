@@ -176,50 +176,8 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             int dragonY = (int) (height * 0.24f + Math.sin(elapsed / 150.0) * 13);
             drawRedDragon(g, dragonX, dragonY, elapsed);
         } else if (effect == Effect.CINEMATIC) {
-            // A dramatic, layered 3D-style HUD cinematic: expanding perspective frames,
-            // an extruded amount title, sweeping light streaks and cinematic letterboxing.
-            float intro = Math.min(1f, elapsed / 850f);
-            float pulse = (float) (0.5 + 0.5 * Math.sin(elapsed / 170.0));
-            int bar = (int) (height * 0.15f * intro);
-            int accent = fakePayment ? donorColor : 0xFFFFD76A;
-            g.fill(0, 0, width, bar, 0xFF050509);
-            g.fill(0, height - bar, width, height, 0xFF050509);
-            g.fill(0, 0, width, height, 0x22000000);
+            drawSlotMachine(g, mc, width, height, elapsed);
 
-            // Nested frames expand toward the viewer to create a tunnel/depth effect.
-            for (int i = 0; i < 5; i++) {
-                int inset = 18 + i * 17 + (int) (pulse * 5);
-                int frameColor = withAlpha(accent, 95 - i * 13);
-                int thickness = 2;
-                g.fill(inset, height / 2 - 48 - i * 10, width - inset, height / 2 - 48 - i * 10 + thickness, frameColor);
-                g.fill(inset, height / 2 + 48 + i * 10, width - inset, height / 2 + 48 + i * 10 + thickness, frameColor);
-                g.fill(inset, height / 2 - 48 - i * 10, inset + thickness, height / 2 + 48 + i * 10, frameColor);
-                g.fill(width - inset - thickness, height / 2 - 48 - i * 10, width - inset, height / 2 + 48 + i * 10, frameColor);
-            }
-            // Light streaks sweep in from the edges.
-            int sweep = (int) ((elapsed * 1.4f) % Math.max(1, width));
-            g.fill(sweep - 90, height / 2 - 2, sweep + 90, height / 2 + 2, withAlpha(accent, 110));
-            g.fill(width - sweep - 90, height / 2 + 34, width - sweep + 90, height / 2 + 37, withAlpha(accent, 75));
-
-            String headline = "DONATION RECEIVED";
-            g.text(mc.font, headline, width / 2 - mc.font.width(headline) / 2, height / 2 - 58, 0xFFFFFFFF, true);
-
-            // Offset copies create an extruded, 3D-style amount title.
-            float titleScale = 1.8f + pulse * 0.12f;
-            g.pose().pushMatrix();
-            g.pose().translate(width / 2f, height / 2f - 15f);
-            g.pose().scale(titleScale, titleScale);
-            g.pose().translate(-width / 2f, -(height / 2f - 15f));
-            int amountX = width / 2 - mc.font.width(amountLabel) / 2;
-            for (int depth = 7; depth >= 1; depth--) {
-                g.text(mc.font, amountLabel, amountX + depth, height / 2 - 15 + depth, 0xFF6B3D12, false);
-            }
-            g.text(mc.font, amountLabel, amountX, height / 2 - 15, accent, true);
-            g.pose().popMatrix();
-
-            g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + 35, donorColor, true);
-            String subline = "ALLAYSMP • LEGENDARY PAYMENT";
-            g.text(mc.font, subline, width / 2 - mc.font.width(subline) / 2, height / 2 + 49, 0xFFD8D8E8, true);
         }
 
         if (fakePayment) {
@@ -331,6 +289,90 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             name += "...";
         }
         g.text(mc.font, name, textX, top + 34, donorColor, true);
+    }
+
+
+    private static void drawSlotMachine(GuiGraphicsExtractor g, Minecraft mc, int width, int height, long elapsed) {
+        // The $10M tier becomes a slot machine. Each digit reel stops independently
+        // on the donated amount, while the lever pulls down to trigger the spin.
+        String digits = amountLabel.replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) digits = "10";
+        if (digits.length() > 6) digits = digits.substring(0, 6);
+        String suffix = amountLabel.replaceAll("[0-9.,$]", "");
+        int reelWidth = 38;
+        int reelGap = 8;
+        int machineWidth = Math.min(width - 20, Math.max(250, digits.length() * (reelWidth + reelGap) + 88));
+        int machineHeight = 158;
+        int left = (width - machineWidth) / 2;
+        int top = Math.max(22, (height - machineHeight) / 2 - 8);
+        int right = left + machineWidth;
+        int bottom = top + machineHeight;
+        float pulse = (float)(0.5 + 0.5 * Math.sin(elapsed / 190.0));
+
+        // Cabinet, polished gold trim, inner glass and top marquee.
+        roundedFill(g, left - 5, top - 5, right + 5, bottom + 5, 17, 0xAA000000);
+        roundedFill(g, left, top, right, bottom, 15, 0xFFB56A19);
+        roundedFill(g, left + 5, top + 5, right - 5, bottom - 5, 12, 0xFF3B1C12);
+        roundedFill(g, left + 10, top + 10, right - 10, bottom - 10, 9, 0xFF17131B);
+        roundedFill(g, left + 15, top + 12, right - 15, top + 36, 7, 0xFF5B2419);
+        String marquee = "ALLAY JACKPOT";
+        g.text(mc.font, marquee, width / 2 - mc.font.width(marquee) / 2, top + 19, 0xFFFFD66B, true);
+        g.fill(left + 16, top + 39, right - 16, top + 41, 0xFFFFC45B);
+
+        int reelsWidth = digits.length() * reelWidth + (digits.length() - 1) * reelGap;
+        int reelsLeft = width / 2 - reelsWidth / 2;
+        int reelTop = top + 49;
+        int reelBottom = reelTop + 57;
+        String symbols = "0123456789*$+?";
+        for (int i = 0; i < digits.length(); i++) {
+            int x = reelsLeft + i * (reelWidth + reelGap);
+            roundedFill(g, x - 2, reelTop - 2, x + reelWidth + 2, reelBottom + 2, 6, 0xFFFFD46B);
+            roundedFill(g, x, reelTop, x + reelWidth, reelBottom, 4, 0xFF08090F);
+            roundedFill(g, x + 3, reelTop + 3, x + reelWidth - 3, reelBottom - 3, 3, 0xFF20212A);
+
+            long stopAt = 1450L + i * 520L;
+            boolean spinning = elapsed < stopAt;
+            String shown;
+            if (spinning) {
+                long frame = Math.max(0L, (elapsed - i * 55L) / 65L);
+                int index = (int)Math.floorMod(frame * 17L + i * 31L + frame * frame * 3L, symbols.length());
+                shown = String.valueOf(symbols.charAt(index));
+            } else {
+                shown = String.valueOf(digits.charAt(i));
+            }
+            int textColor = spinning ? 0xFFFFD36A : 0xFFFFFFFF;
+            g.text(mc.font, shown, x + reelWidth / 2 - mc.font.width(shown) / 2, reelTop + 20, textColor, true);
+            if (!spinning) {
+                g.fill(x + 4, reelTop + 5, x + reelWidth - 4, reelTop + 7, 0x55FFFFFF);
+                g.fill(x + 4, reelBottom - 7, x + reelWidth - 4, reelBottom - 5, 0x55FFFFFF);
+            }
+        }
+
+        // Lever: the knob drops during the first half-second, then returns upright.
+        int pivotX = right - 17;
+        int pivotY = top + 59;
+        g.fill(pivotX - 3, pivotY - 10, pivotX + 4, pivotY + 10, 0xFF8B4A1B);
+        float pull = Math.max(0f, Math.min(1f, elapsed / 230f));
+        float returnPull = elapsed < 230L ? pull : Math.max(0f, 1f - (elapsed - 230L) / 280f);
+        int knobX = pivotX + (int)(returnPull * 13);
+        int knobY = pivotY + 22 + (int)(returnPull * 23);
+        int stemTop = pivotY + 1;
+        int stemBottom = knobY - 5;
+        for (int y = stemTop; y < stemBottom; y++) {
+            int x = pivotX + (int)((knobX - pivotX) * ((float)(y - stemTop) / Math.max(1, stemBottom - stemTop)));
+            g.fill(x - 2, y, x + 3, y + 1, 0xFFE7D6C0);
+        }
+        drawEllipse(g, knobX, knobY, 8, 8, 0xFFFF4B3E);
+        drawEllipse(g, knobX - 2, knobY - 3, 3, 3, 0xFFFFC1A4);
+        drawEllipse(g, pivotX, pivotY, 5, 5, 0xFFFFD56A);
+
+        String suffixText = suffix.isBlank() ? "" : " " + suffix;
+        String result = "$ " + String.join(" ", digits.split("")) + suffixText;
+        String status = elapsed < 2800L ? "ROLLING YOUR DONATION..." : "JACKPOT!";
+        int statusColor = elapsed < 2800L ? 0xFFFFD36A : 0xFF8CFFB2;
+        g.text(mc.font, status, width / 2 - mc.font.width(status) / 2, bottom + 8, statusColor, true);
+        g.text(mc.font, result, width / 2 - mc.font.width(result) / 2, bottom + 22, 0xFFFFFFFF, true);
+        g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, bottom + 36, 0xFFFFDCA0, true);
     }
 
     private static void drawNuke(GuiGraphicsExtractor g, Minecraft mc, int width, int height,
