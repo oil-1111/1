@@ -174,7 +174,13 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         if (effect == Effect.SIDE_POPUP) {
             // The side notification above is the complete $10K-tier animation.
         } else if (effect == Effect.EXPLOSION) {
-            drawNuke(g, mc, width, height, elapsed, donorColor);
+            // The donor's head drops into the bomb first; the blast begins on impact.
+            long impactDelay = 1_250L;
+            if (elapsed < impactDelay) {
+                drawFallingDonorIntoBomb(g, mc, width, height, elapsed, donorName);
+            } else {
+                drawNuke(g, mc, width, height, elapsed - impactDelay, donorColor);
+            }
         } else if (effect == Effect.BLACK_HOLE) {
             drawBlackHole(g, mc, width, height, elapsed, donorColor);
         } else if (effect == Effect.DRAGON) {
@@ -394,6 +400,48 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         g.text(mc.font, status, width / 2 - mc.font.width(status) / 2, bottom + 8, statusColor, true);
         g.text(mc.font, result, width / 2 - mc.font.width(result) / 2, bottom + 22, 0xFFFFFFFF, true);
         g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, bottom + 36, 0xFFFFDCA0, true);
+    }
+
+    private static void drawFallingDonorIntoBomb(GuiGraphicsExtractor g, Minecraft mc, int width, int height,
+                                                    long elapsed, String donor) {
+        int cx = width / 2;
+        int ground = (int) (height * 0.70f);
+        int bombY = ground - 18;
+
+        // A small cartoon bomb waits at the bottom of the screen.
+        drawEllipse(g, cx, bombY + 5, 17, 18, 0xFF171923);
+        drawEllipse(g, cx, bombY + 2, 14, 15, 0xFF303440);
+        drawEllipse(g, cx - 5, bombY - 5, 4, 4, 0xFF777E8C);
+        for (int i = 0; i < 4; i++) {
+            double a = elapsed / 95.0 + i * Math.PI / 2.0;
+            int sx = cx + (int) (Math.cos(a) * 22);
+            int sy = bombY - 14 + (int) (Math.sin(a) * 12);
+            drawEllipse(g, sx, sy, 3, 3, 0xFFFFC34D);
+        }
+        // The fuse glows as the head gets close.
+        g.fill(cx + 5, bombY - 17, cx + 9, bombY - 11, 0xFFB78A55);
+        drawEllipse(g, cx + 9, bombY - 20, 4, 4, 0xFFFF8A35);
+
+        float progress = Math.min(1f, elapsed / 1_050f);
+        float eased = progress * progress;
+        int headSize = 40;
+        int headX = cx - headSize / 2;
+        int headY = (int) (-headSize - 8 + eased * (bombY - headSize / 2 + 8));
+        drawEllipse(g, cx, headY + headSize / 2 + 4, 24, 7, 0x66303030);
+        roundedFill(g, headX - 3, headY - 3, headX + headSize + 3, headY + headSize + 3,
+                7, 0xFFFFB64D);
+        roundedFill(g, headX, headY, headX + headSize, headY + headSize, 5, 0xFF202637);
+        try {
+            PlayerFaceExtractor.extractRenderState(g, ResolvableProfile.createUnresolved(donor), headX, headY, headSize);
+        } catch (RuntimeException ignored) {
+            String initial = donor == null || donor.isBlank() ? "?" : donor.substring(0, 1).toUpperCase(Locale.ROOT);
+            g.text(mc.font, initial, cx - mc.font.width(initial) / 2, headY + 13, 0xFFFFFFFF, true);
+        }
+
+        String caption = "HERE COMES " + (donor == null ? "THE DONOR" : donor.toUpperCase(Locale.ROOT));
+        if (mc.font.width(caption) > width - 24) caption = "DONOR INCOMING!";
+        g.text(mc.font, caption, cx - mc.font.width(caption) / 2, Math.max(8, height / 6),
+                0xFFFFD78A, true);
     }
 
     private static void drawNuke(GuiGraphicsExtractor g, Minecraft mc, int width, int height,
