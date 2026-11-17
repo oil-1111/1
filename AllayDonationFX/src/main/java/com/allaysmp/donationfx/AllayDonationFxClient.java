@@ -269,8 +269,8 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         Minecraft mc = Minecraft.getInstance();
         switch (effect) {
             case SIDE_POPUP -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_IN, 0.9F));
-            case EXPLOSION -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ENTITY_GENERIC_EXPLODE, 0.85F));
-            case BLACK_HOLE -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BLOCK_END_PORTAL_SPAWN, 1.0F));
+            case EXPLOSION -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EXPLODE, 0.85F));
+            case BLACK_HOLE -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.END_PORTAL_SPAWN, 1.0F));
             case CINEMATIC -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0F));
             default -> mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.8F));
         }
