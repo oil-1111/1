@@ -130,18 +130,24 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         if (meme) {
             float bounce = (float) Math.abs(Math.sin(elapsed / 115.0)) * 16f;
             float pulse = (float) (0.5 + 0.5 * Math.sin(elapsed / 95.0));
-            int y = (int) (height * 0.18f - bounce);
+            boolean solo67 = effect == Effect.NONE;
+            int y = solo67 ? (int) (height / 2f - 23 - bounce) : (int) (height * 0.18f - bounce);
             int x = width / 2;
-            int glow = 0x5500FF00 | ((int) (55 + pulse * 90) << 24);
-            int size = 76 + (int) (pulse * 8);
-            // Layered green glow, dark backing plate, and bright centre.
+            int glow = solo67 ? (0x550000FF | ((int) (55 + pulse * 90) << 24))
+                              : (0x5500FF00 | ((int) (55 + pulse * 90) << 24));
+            int size = solo67 ? 88 + (int) (pulse * 8) : 76 + (int) (pulse * 8);
+            // A solo $67 gets a blue popup; stacked 67s use the signature green glow.
             g.fill(x - size - 9, y - 31, x + size + 9, y + 43, glow);
-            g.fill(x - size, y - 25, x + size, y + 37, 0xDD071B0A);
-            g.fill(x - size + 3, y - 22, x + size - 3, y + 34, 0xAA123B12);
+            g.fill(x - size, y - 25, x + size, y + 37, solo67 ? 0xDD07152B : 0xDD071B0A);
+            g.fill(x - size + 3, y - 22, x + size - 3, y + 34, solo67 ? 0xAA123B70 : 0xAA123B12);
             g.text(mc.font, "67", x - 17, y - 8, 0xFFFFFFFF, true);
-            g.text(mc.font, "67", x - 16, y - 9, 0xFF8CFF36, true);
+            g.text(mc.font, "67", x - 16, y - 9, solo67 ? 0xFF55B8FF : 0xFF8CFF36, true);
+            if (solo67) {
+                g.text(mc.font, amountLabel, x - mc.font.width(amountLabel) / 2, y + 15, 0xFFFFFFFF, true);
+                g.text(mc.font, donorName, x - mc.font.width(donorName) / 2, y + 28, 0xFF9CD9FF, true);
+            }
             // Small pixel-like sparks around the popup.
-            int spark = 0xFF9DFF55;
+            int spark = solo67 ? 0xFF80CFFF : 0xFF9DFF55;
             g.fill(x - size - 13, y - 12, x - size - 7, y - 6, spark);
             g.fill(x + size + 7, y + 8, x + size + 13, y + 14, spark);
             g.fill(x - 42, y + 40, x - 36, y + 46, spark);
