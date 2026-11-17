@@ -138,22 +138,9 @@ public final class AllayDonationFxClient implements ClientModInitializer {
         if (effect == Effect.SIDE_POPUP) {
             // The side notification above is the complete $10K-tier animation.
         } else if (effect == Effect.EXPLOSION) {
-            float pulse = (float) Math.sin(elapsed / 90.0) * 0.5f + 0.5f;
-            int r = (int) (22 + pulse * 18);
-            drawTierRim(g, width / 2, height / 2 + 1, 190, 62, 2, fakePayment ? donorColor : 0xFFFF9638);
-            roundedFill(g, width / 2 - 91, height / 2 - 29, width / 2 + 91, height / 2 + 29, 9, 0xE51D100B);
-            g.fill(width / 2 - r, height / 2 - r, width / 2 + r, height / 2 + r, fakePayment ? withAlpha(donorColor, 0x66) : 0x66FF8A24);
-            g.text(mc.font, "BOOM!  " + amountLabel, width / 2 - 55, height / 2 - 12, 0xFFFFD36A, true);
-            g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + 5, donorColor, true);
+            drawNuke(g, mc, width, height, elapsed, donorColor);
         } else if (effect == Effect.BLACK_HOLE) {
-            int radius = (int) (18 + Math.sin(elapsed / 180.0) * 5);
-            drawTierRim(g, width / 2, height / 2 + radius + 22, 218, 54, 3, fakePayment ? donorColor : 0xFFB477FF);
-            roundedFill(g, width / 2 - 105, height / 2 + radius - 3, width / 2 + 105, height / 2 + radius + 48, 10, 0xE5100B1D);
-            g.fill(width / 2 - radius * 2, height / 2 - radius * 2, width / 2 + radius * 2, height / 2 + radius * 2, 0x331B0B38);
-            g.fill(width / 2 - radius, height / 2 - radius, width / 2 + radius, height / 2 + radius, 0xFF080512);
-            g.fill(width / 2 - radius - 5, height / 2 - 2, width / 2 + radius + 5, height / 2 + 2, fakePayment ? withAlpha(donorColor, 0xBB) : 0xBB9D65FF);
-            g.text(mc.font, "BLACK HOLE  " + amountLabel, width / 2 - 65, height / 2 + radius + 14, 0xFFDCCBFF, true);
-            g.text(mc.font, donorName, width / 2 - mc.font.width(donorName) / 2, height / 2 + radius + 27, donorColor, true);
+            drawBlackHole(g, mc, width, height, elapsed, donorColor);
         } else if (effect == Effect.DRAGON) {
             // Keep the donation details in the compact side popup.
             // The dragon flyby is the tier animation layered over that popup.
@@ -291,6 +278,147 @@ public final class AllayDonationFxClient implements ClientModInitializer {
             name += "...";
         }
         g.text(mc.font, name, textX, top + 34, donorColor, true);
+    }
+
+    private static void drawNuke(GuiGraphicsExtractor g, Minecraft mc, int width, int height,
+                                 long elapsed, int donorColor) {
+        float t = Math.min(1f, elapsed / 3900f);
+        int cx = width / 2;
+        int ground = (int) (height * 0.70f);
+        float flash = Math.max(0f, 1f - elapsed / 260f);
+
+        // A brief white-hot flash, then a rapidly expanding ground shockwave.
+        if (flash > 0f) {
+            g.fill(0, 0, width, height, withAlpha(0xFFFFE9B5, (int) (flash * 205)));
+        }
+        int shockRadius = (int) (t * Math.max(width, height) * 0.78f);
+        int shockY = ground + 8;
+        drawEllipseBand(g, cx, shockY, shockRadius, Math.max(5, shockRadius / 7),
+                Math.max(2, 8 - (int) (t * 5)), withAlpha(0xFFFFB34D, (int) ((1f - t) * 190)));
+
+        // Rising stem and the expanding mushroom-shaped fireball.
+        float rise = Math.min(1f, t * 1.65f);
+        int stemTop = ground - (int) (rise * height * 0.43f);
+        int stemWidth = (int) (10 + 25 * Math.sin(Math.min(1f, t * 2.2f) * Math.PI));
+        drawEllipse(g, cx, (ground + stemTop) / 2, stemWidth, Math.max(10, (ground - stemTop) / 2),
+                0xD9E94722);
+        drawEllipse(g, cx, (ground + stemTop) / 2, Math.max(5, stemWidth / 2), Math.max(8, (ground - stemTop) / 2 - 5),
+                0xEFFFF078);
+
+        int cloudY = ground - (int) (height * (0.24f + 0.20f * rise));
+        int cloudRx = (int) (18 + t * Math.min(width * 0.23f, 125));
+        int cloudRy = (int) (12 + t * 42);
+        // Dark smoke cap behind the glowing fireball.
+        drawEllipse(g, cx, cloudY - 8, cloudRx + 17, cloudRy + 14, 0xD92A2530);
+        drawEllipse(g, cx - cloudRx / 2, cloudY + 3, cloudRx / 2 + 12, cloudRy, 0xD94A3030);
+        drawEllipse(g, cx + cloudRx / 2, cloudY + 1, cloudRx / 2 + 12, cloudRy, 0xD94A3030);
+        drawEllipse(g, cx, cloudY + 7, cloudRx, cloudRy, 0xE6A63825);
+        drawEllipse(g, cx, cloudY + 5, Math.max(8, cloudRx - 13), Math.max(7, cloudRy - 8), 0xF0F36A32);
+        drawEllipse(g, cx, cloudY + 8, Math.max(5, cloudRx - 27), Math.max(5, cloudRy - 15), 0xFFFFC45A);
+
+        // Rolling smoke puffs and drifting embers.
+        for (int i = 0; i < 7; i++) {
+            double a = i * 0.897;
+            int px = cx + (int) (Math.cos(a) * (cloudRx * 0.72));
+            int py = cloudY - 7 + (int) (Math.sin(a) * cloudRy * 0.55);
+            int puff = 8 + (int) ((i % 3) * 4 + t * 5);
+            drawEllipse(g, px, py, puff, puff / 2 + 3, 0xB52D2932);
+        }
+        for (int i = 0; i < 12; i++) {
+            double a = i * 2.399 + elapsed / 190.0;
+            int distance = 24 + (int) ((i * 13 + elapsed / 24) % 105);
+            int px = cx + (int) (Math.cos(a) * distance);
+            int py = cloudY + (int) (Math.sin(a) * distance * 0.55);
+            int size = 2 + (i % 3);
+            g.fill(px - size, py - size, px + size, py + size, (i % 2 == 0) ? 0xFFFFD35A : 0xFFFF6735);
+        }
+
+        // Compact caption; the donor and amount remain visible in the side notification too.
+        int cardY = Math.min(height - 48, ground + 18);
+        drawTierRim(g, cx, cardY + 12, 218, 34, 2, 0xFFFF873A);
+        g.text(mc.font, "NUCLEAR BLAST", cx - mc.font.width("NUCLEAR BLAST") / 2, cardY + 2, 0xFFFFD78A, true);
+    }
+
+    private static void drawBlackHole(GuiGraphicsExtractor g, Minecraft mc, int width, int height,
+                                      long elapsed, int donorColor) {
+        int cx = width / 2;
+        int cy = height / 2 - 24;
+        float pulse = (float) (0.5 + 0.5 * Math.sin(elapsed / 260.0));
+        float rotation = elapsed / 520.0f;
+        int core = 28 + (int) (pulse * 3);
+
+        // Subtle gravitational vignette and distant stars.
+        g.fill(cx - 150, cy - 115, cx + 150, cy + 115, 0x180A0618);
+        for (int i = 0; i < 24; i++) {
+            double a = i * 2.399;
+            int sx = cx + (int) (Math.cos(a) * (72 + (i % 4) * 25));
+            int sy = cy + (int) (Math.sin(a) * (42 + (i % 5) * 17));
+            int twinkle = (int) (90 + 100 * (0.5 + 0.5 * Math.sin(elapsed / 180.0 + i)));
+            g.fill(sx, sy, sx + (i % 3 == 0 ? 3 : 2), sy + (i % 3 == 0 ? 3 : 2), withAlpha(0xFFD9D2FF, twinkle));
+        }
+
+        // Accretion disk: several flattened, glowing rings behind the event horizon.
+        drawEllipseBand(g, cx, cy + 2, 104, 37, 12, 0x553F24A8);
+        drawEllipseBand(g, cx, cy + 1, 94, 30, 9, 0xBB8B4BFF);
+        drawEllipseBand(g, cx, cy, 82, 23, 7, 0xFFFFB65E);
+        drawEllipseBand(g, cx, cy - 1, 70, 17, 5, 0xFFFFE6A0);
+        drawEllipseBand(g, cx, cy - 2, 58, 12, 3, 0xFFFFFFFF);
+
+        // Streaks in the disk suggest fast orbital motion.
+        for (int i = 0; i < 18; i++) {
+            double a = i * 0.71 + rotation;
+            int rx = 48 + (i % 5) * 10;
+            int ry = 12 + (i % 4) * 4;
+            int px = cx + (int) (Math.cos(a) * rx);
+            int py = cy + (int) (Math.sin(a) * ry);
+            g.fill(px - 5, py - 1, px + 5, py + 2, (i % 3 == 0) ? 0xFFFFE7B1 : 0xCCB78BFF);
+        }
+
+        // Bright gravitational-lensing halo, then the perfectly dark event horizon.
+        drawEllipseBand(g, cx, cy, core + 8, core + 8, 3, 0xFFFFDCA0);
+        drawEllipseBand(g, cx, cy, core + 4, core + 4, 2, 0xFFFFFFFF);
+        drawEllipse(g, cx, cy, core, core, 0xFF020106);
+        drawEllipse(g, cx - 5, cy - 5, core / 2, core / 2, 0xFF000000);
+
+        // A small warped light arc on the upper edge of the black sphere.
+        drawEllipseBand(g, cx, cy - 1, core + 5, core + 5, 2, 0xD9E6C5FF);
+
+        int cardY = cy + 75;
+        drawTierRim(g, cx, cardY + 12, 226, 34, 3, 0xFFB77BFF);
+        g.text(mc.font, "BLACK HOLE  " + amountLabel,
+                cx - mc.font.width("BLACK HOLE  " + amountLabel) / 2, cardY + 2, 0xFFE9D7FF, true);
+        g.text(mc.font, donorName, cx - mc.font.width(donorName) / 2, cardY + 15, donorColor, true);
+    }
+
+    private static void drawEllipse(GuiGraphicsExtractor g, int cx, int cy, int rx, int ry, int color) {
+        if (rx <= 0 || ry <= 0) return;
+        for (int dy = -ry; dy <= ry; dy++) {
+            double normalized = 1.0 - (double) (dy * dy) / (ry * ry);
+            int half = (int) (rx * Math.sqrt(Math.max(0.0, normalized)));
+            g.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, color);
+        }
+    }
+
+    private static void drawEllipseBand(GuiGraphicsExtractor g, int cx, int cy, int rx, int ry,
+                                        int thickness, int color) {
+        if (rx <= 0 || ry <= 0) return;
+        int innerRx = Math.max(0, rx - thickness);
+        int innerRy = Math.max(0, ry - thickness);
+        for (int dy = -ry; dy <= ry; dy++) {
+            double outerN = 1.0 - (double) (dy * dy) / (ry * ry);
+            int outerHalf = (int) (rx * Math.sqrt(Math.max(0.0, outerN)));
+            int innerHalf = 0;
+            if (innerRy > 0 && Math.abs(dy) < innerRy) {
+                double innerN = 1.0 - (double) (dy * dy) / (innerRy * innerRy);
+                innerHalf = (int) (innerRx * Math.sqrt(Math.max(0.0, innerN)));
+            }
+            if (innerHalf <= 0) {
+                g.fill(cx - outerHalf, cy + dy, cx + outerHalf + 1, cy + dy + 1, color);
+            } else {
+                g.fill(cx - outerHalf, cy + dy, cx - innerHalf, cy + dy + 1, color);
+                g.fill(cx + innerHalf, cy + dy, cx + outerHalf + 1, cy + dy + 1, color);
+            }
+        }
     }
 
     private static void drawRedDragon(GuiGraphicsExtractor g, int x, int y, long elapsed) {
